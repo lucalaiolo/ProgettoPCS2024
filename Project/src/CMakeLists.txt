@@ -1,5 +1,5 @@
-list(APPEND src_sources "${CMAKE_CURRENT_SOURCE_DIR}/Polygons.cpp")
-list(APPEND src_headers "${CMAKE_CURRENT_SOURCE_DIR}/Polygons.hpp")
+list(APPEND src_sources "${CMAKE_CURRENT_SOURCE_DIR}/Fractures.cpp")
+list(APPEND src_headers "${CMAKE_CURRENT_SOURCE_DIR}/Fractures.hpp")
 
 
 set(src_sources ${src_sources} PARENT_SCOPE)
