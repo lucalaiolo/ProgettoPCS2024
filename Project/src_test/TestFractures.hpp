@@ -2,7 +2,7 @@
 #define __TESTPOLYGONS_H
 
 #include <gtest/gtest.h>
-#include "Polygons.hpp"
+#include "Fractures.hpp"
 #include "Eigen/Eigen"
 #include <iostream>
 #include "UCDUtilities.hpp"
