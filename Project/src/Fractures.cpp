@@ -8,8 +8,10 @@ using namespace Eigen;
 
 namespace FractureLibrary {
 
-    void computeTraces(Fractures &FractureList) {
+    void computeTraces(Fractures &FractureList, Traces &TracesList) {
         const unsigned int numFractures = FractureList.FractVertices.size();
+        unsigned int count = 0;
+
         for(unsigned int i=0;i<numFractures;i++) {
             for(unsigned int j=i+1;j<numFractures;j++){ // we select two fractures without looking for intersections twice
                 cout << "Fracture " << i<< endl;
@@ -101,20 +103,43 @@ namespace FractureLibrary {
                 }
 
                 // it's possible that there is a trace
-                MatrixXd tracePoints = MatrixXd::Zero(3,2);
-                for(unsigned int k=0;k<4;k++) {
-                    cout << fixed << showpoint << setprecision(30) << betas[k] << endl;
+                double temp;
+                Vector3d temp_vec;
+                if(betas[0] > betas[1]) {
+                    temp = betas[0];
+                    betas[0] = betas[1];
+                    betas[1] = temp;
+                    temp_vec = A_B_C_D[0];
+                    A_B_C_D[0] = A_B_C_D[1];
+                    A_B_C_D[1] = temp_vec;
                 }
-                bool boh = (betas[0]==betas[2]);
-                bool boh2 = (betas[1]==betas[3]);
-                cout << boh << endl;
-                cout << boh2 << endl;
-                unsigned int n = findCase(A_B_C_D,betas);
+                if(betas[2] > betas[3]) {
+                    temp = betas[2];
+                    betas[2] = betas[3];
+                    betas[3] = temp;
+                    temp_vec = A_B_C_D[2];
+                    A_B_C_D[2] = A_B_C_D[3];
+                    A_B_C_D[3] = temp_vec;
+                }
 
 
-                break;
-            }
-            break;
+                const int n = findCase(A_B_C_D,betas);
+
+                switch(n) {
+                    case 0:
+                        cout << "Trace is A_B. Tips for both." << endl;
+                        MatrixXd trace_coord = MatrixXd::Zero(3,2);
+                        if(FractureList.listTraces[i].empty()) {
+                            // fare
+                        }
+                        cout << true << endl;
+                        count++;
+
+                }
+
+                cout << endl << endl;
+
+                }
         }
 
     }
@@ -132,6 +157,7 @@ namespace FractureLibrary {
         convertN >> numFractures;
         convertN.clear(); // clear istringstream object
         FractureList.FractVertices.resize(numFractures);
+        FractureList.listTraces.resize(numFractures);
         for(unsigned int i=0;i<numFractures;i++) {
             unsigned int numVertices;
             getline(inputFile,line); // skip line
@@ -205,7 +231,67 @@ namespace FractureLibrary {
         return true;
     }
 
-    unsigned int findCase(const vector<Vector3d> &A_B_C_D, const vector<double> &betas) {
+    int findCase(const vector<Vector3d> &A_B_C_D, const vector<double> &betas) {
+        // we first check if any of these points coincide
+        const double tol = 2.2e-16;
+        const bool A_equals_C = (fabs(betas[0]-betas[2])/max(max(fabs(betas[0]),fabs(betas[2])),{1}) < tol);
+        //bool A_equals_D = (fabs(betas[0]-betas[3])/max(max(fabs(betas[0]),fabs(betas[3])),{1}) < tol); // not possible under our hypotheses
+        // bool B_equals_C = (fabs(betas[1]-betas[2])/max(max(fabs(betas[1]),fabs(betas[2])),{1}) < tol); // not possible under our hypotheses
+        const bool B_equals_D = (fabs(betas[1]-betas[3])/max(max(fabs(betas[1]),fabs(betas[3])),{1}) < tol);
+        if(A_equals_C && B_equals_D) {
+            cout << "Trace is A_B. Tips for both." << endl;
+            return 0;
+        } else {
+            if(A_equals_C) { // && !B_equals_D
+                if(betas[1] < betas[3]) {
+                    cout << "Case 6.1 " << endl;
+                    cout << "Trace is AB.Tips F1.no tips F2." << endl;
+                    return -1;
+                } else {
+                    cout << "Case 6.2" << endl;
+                    cout << "Trace is CD. No tips for F1. Tips for F2." << endl;
+                    return -2;
+                }
+            } else if(B_equals_D) { // && !A_equals_C
+                if(betas[0] < betas[2]) {
+                    cout << "Case 7.1" << endl;
+                    cout << "Trace is CD. No tips F1. Tips F2" << endl;
+                    return -4;
+                } else {
+                    cout << "Case 7.2" << endl;
+                    cout << "Trace is AB. tips F1. no tips F2" << endl;
+                    return -5;
+                }
+            } else { // no corresponding points
+                if(betas[1]< betas[2]) {
+                    cout << "Case 1. No trace." << endl;
+                    return 1;
+                }
+                if(betas[2] < betas[0] && betas[1] < betas[3]) {
+                    cout << "Case 2. Trace is AB. Tips F1. No tips F2." << endl;
+                    return 2;
+                }
+                if(betas[0] < betas[2] && betas[2] < betas[1] && betas[1] < betas[3]) {
+                    cout << "Case 3. Trace is CB. No tips." << endl;
+                    return 3;
+                }
+                if(betas[2] < betas[0] && betas[0] < betas[3] && betas[3] < betas[1]) {
+                    cout << "Case 4. Trace is AD. No tips." << endl;
+                    return 4;
+                }
+                if(betas[3] < betas[0]) {
+                    cout << "Case 5. No trace." << endl;
+                    return 5;
+                }
+                if(betas[0] < betas[2] && betas[3] < betas[1]) {
+                    cout << "Case 6. Trace is CD. F1 no tips. F2 tips." << endl;
+                    return 6;
+                }
+
+            }
+
+        }
+
         return 0;
     }
 }
