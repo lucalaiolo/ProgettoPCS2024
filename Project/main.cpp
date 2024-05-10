@@ -7,7 +7,8 @@ using namespace FractureLibrary;
 int main()
 {
     Fractures F;
+    Traces T;
     importFractureList("./DFN/FR3_data.txt", F);
-    computeTraces(F);
+    computeTraces(F,T);
     return 0;
 }
