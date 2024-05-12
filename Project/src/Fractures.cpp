@@ -1,21 +1,21 @@
 #include "Fractures.hpp"
+#include "Sorting.hpp"
 #include<iostream>
 #include "Eigen/Eigen"
 #include <fstream>
 #include <iomanip>
 using namespace std;
 using namespace Eigen;
-
-namespace FractureLibrary {
+using namespace SortingLibrary;
+namespace DFNLibrary {
 
     void computeTraces(Fractures &FractureList, Traces &TracesList) {
         const unsigned int numFractures = FractureList.FractVertices.size();
-        unsigned int count = 0;
-
+        unsigned int count = 0; // variable that will tell us the id of the computed traces
         for(unsigned int i=0;i<numFractures;i++) {
-            for(unsigned int j=i+1;j<numFractures;j++){ // we select two fractures without looking for intersections twice
-                cout << "Fracture " << i<< endl;
-                cout << "Fracture " << j<< endl << endl;
+            for(unsigned int j=i+1;j<numFractures;j++){ // intersection is commutative
+                // cout << "Fracture " << i<< endl;
+                // cout << "Fracture " << j<< endl << endl;
                 // we must check if it's possible that two fractures can intersect
                 const MatrixXd Fract1_vertices = FractureList.FractVertices[i];
                 const MatrixXd Fract2_vertices = FractureList.FractVertices[j];
@@ -41,7 +41,7 @@ namespace FractureLibrary {
                 // find line of intersection between the two planes
                 const Vector3d t = n1.cross(n2);
                 if(t.dot(t) < 2.2e-16) {
-                    cout << "Planes are parallel."<< endl;
+                    // cout << "Planes are parallel."<< endl;
                     continue;
                 }
                 Matrix3d M1;
@@ -52,11 +52,13 @@ namespace FractureLibrary {
                 b << d1,d2,0.0;
                 Vector3d P = M1.fullPivLu().solve(b);
 
-                // we have now succesfully calculated the line of intersection between the planes in which fracture i and j lie
+                // we have now succesfully calculated the line of intersection between the planes in which the two fractures lie
 
                 // We now find points of intersection between given line and edges of fracture i
                 vector<Vector3d> A_B_C_D = {};
                 vector<double> betas;
+                A_B_C_D.reserve(4);
+                betas.reserve(4);
 
                 MatrixXd M2 = MatrixXd::Zero(3,2);
                 for(unsigned int k=0;k<Fract1_numVertices;k++) {
@@ -75,6 +77,9 @@ namespace FractureLibrary {
                     }
                     betas.push_back(alpha_beta(1));
                     A_B_C_D.push_back(alpha_beta(0)*E1+(1-alpha_beta(0))*E2);
+                    if(A_B_C_D.size()==2) { // optimization: given our hypothesis of convexity, there can't be more than two points of intersection
+                        break;
+                    }
                 }
                 if(A_B_C_D.size() != 2) {
                     continue; // no intersection
@@ -96,15 +101,21 @@ namespace FractureLibrary {
                     }
                     betas.push_back(alpha_beta(1));
                     A_B_C_D.push_back(alpha_beta(0)*E1+(1-alpha_beta(0))*E2);
+                    if(A_B_C_D.size()==4) { // same as before
+                        break;
+                    }
                 }
                 if(A_B_C_D.size() != 4) {
-                    cout << "No intersection" << endl; // no intersection
+                    //cout << "No intersection" << endl; // no intersection
                     continue;
                 }
 
                 // it's possible that there is a trace
+
                 double temp;
                 Vector3d temp_vec;
+
+                // "sort" the points of intersection on the line for the first fracture
                 if(betas[0] > betas[1]) {
                     temp = betas[0];
                     betas[0] = betas[1];
@@ -113,6 +124,8 @@ namespace FractureLibrary {
                     A_B_C_D[0] = A_B_C_D[1];
                     A_B_C_D[1] = temp_vec;
                 }
+
+                // "sort" the points of intersection on the line for the first fracture
                 if(betas[2] > betas[3]) {
                     temp = betas[2];
                     betas[2] = betas[3];
@@ -123,31 +136,57 @@ namespace FractureLibrary {
                 }
 
 
-                const int n = findCase(A_B_C_D,betas);
+                const int n = findCase(betas);
 
-                switch(n) {
-                    case 0:
-                        cout << "Trace is A_B. Tips for both." << endl;
-                        MatrixXd trace_coord = MatrixXd::Zero(3,2);
-                        if(FractureList.listTraces[i].empty()) {
-                            // fare
-                        }
-                        cout << true << endl;
-                        count++;
-
+                if(n==0) {
+                    //cout << "Trace is A_B. False for both." << endl;
+                    array<bool,2> tips = {false,false};
+                    executeCase(count,i,j,0,1,A_B_C_D,tips,FractureList,TracesList);
+                    continue;
+                } else if(n == 1 || n == 5) {
+                    //cout << "No trace" << endl;
+                    continue;
+                } else if(n==-1 || n==2) {
+                    //cout << "Trace is A_B. False F1. True F2." << endl;
+                    array<bool,2> tips = {false,true};
+                    executeCase(count,i,j,0,1,A_B_C_D,tips,FractureList,TracesList);
+                    continue;
+                } else if(n==3) {
+                    //cout << "Case 3. Trace is CB. True both." << endl;
+                    array<bool,2> tips = {true,true};
+                    executeCase(count,i,j,2,1,A_B_C_D,tips,FractureList,TracesList);
+                    continue;
+                } else if(n==4) {
+                    //cout << "Case 4. Trace is AD. True both." << endl;
+                    array<bool,2> tips = {true,true};
+                    executeCase(count,i,j,0,3,A_B_C_D,tips,FractureList,TracesList);
+                    continue;
+                } else if(n==6 || n==-2 || n==-3) {
+                    //cout << "Case 6. Trace is CD. F1 true. F2 false." << endl;
+                    array<bool,2> tips = {true,false};
+                    executeCase(count,i,j,2,3,A_B_C_D,tips,FractureList,TracesList);
+                    continue;
+                } else if(n==-4) {
+                    //cout << "Case 7.2" << endl;
+                    //cout << "Trace is AD. false F1. true F2" << endl;
+                    array<bool,2> tips = {false,true};
+                    executeCase(count,i,j,0,3,A_B_C_D,tips,FractureList,TracesList);
+                    continue;
                 }
 
-                cout << endl << endl;
-
-                }
+            }
         }
+        computeTracesSquaredLength(TracesList);
+        exportTraces("Traces.txt", TracesList);
+        exportFractures("Fractures.txt", FractureList, TracesList);
 
     }
 
-    void importFractureList(const string &filepath, Fractures &FractureList) {
+    bool importFractureList(const string &filepath, Fractures &FractureList, Traces& TracesList) {
         ifstream inputFile(filepath);
         if(inputFile.fail()) {
-            throw runtime_error("Something went wrong.");
+            cerr << "Something went wrong." << endl;
+            return false;
         }
         string line;
         getline(inputFile,line); // skip header
@@ -179,14 +218,39 @@ namespace FractureLibrary {
             }
         }
         inputFile.close();
+        computeTraces(FractureList,TracesList);
+        return true;
     }
 
-    double computeSquaredDistancePoints(const Vector3d Point1, const Vector3d Point2) {
-        double dist=0.0;
+    inline double computeSquaredDistancePoints(const Vector3d Point1, const Vector3d Point2) {
+        double dist = 0.0;
         for(unsigned int i=0;i<3;i++) {
             dist += (Point1(i)-Point2(i))*(Point1(i)-Point2(i));
         }
         return dist;
+    }
+
+    inline void executeCase(unsigned int &count, const unsigned int &i, const unsigned int &j,
+                            const unsigned int &pos1, const unsigned int &pos2, const vector<Vector3d> &A_B_C_D,
+                            const array<bool, 2> &tips, Fractures &FractureList, Traces &TracesList) {
+        MatrixXd trace_coord = MatrixXd::Zero(3,2);
+        trace_coord.col(0) = A_B_C_D[pos1];
+        trace_coord.col(1) = A_B_C_D[pos2];
+        //
+        //
+        // MIGLIORARE QUI PUSH BACK
+        //
+        //
+        auto ret1 = FractureList.listTraces[i].insert({tips[0], {count}});
+        if(!ret1.second)
+            (*(ret1.first)).second.push_back(count);
+        auto ret2 = FractureList.listTraces[j].insert({tips[1], {count}});
+        if(!ret2.second)
+            (*(ret2.first)).second.push_back(count);
+        array<unsigned int,2> trace_id = {i,j};
+        TracesList.TraceIDFractures.push_back(trace_id);
+        TracesList.TraceCoordinates.push_back(trace_coord);
+        count++;
     }
 
     bool checkIntersectionPossibility(const MatrixXd &Fract1_vertices, const MatrixXd &Fract2_vertices) {
@@ -231,7 +295,7 @@ namespace FractureLibrary {
         return true;
     }
 
-    int findCase(const vector<Vector3d> &A_B_C_D, const vector<double> &betas) {
+    int findCase(const vector<double> &betas) {
         // we first check if any of these points coincide
         const double tol = 2.2e-16;
         const bool A_equals_C = (fabs(betas[0]-betas[2])/max(max(fabs(betas[0]),fabs(betas[2])),{1}) < tol);
@@ -239,59 +303,128 @@ namespace FractureLibrary {
         // bool B_equals_C = (fabs(betas[1]-betas[2])/max(max(fabs(betas[1]),fabs(betas[2])),{1}) < tol); // not possible under our hypotheses
         const bool B_equals_D = (fabs(betas[1]-betas[3])/max(max(fabs(betas[1]),fabs(betas[3])),{1}) < tol);
         if(A_equals_C && B_equals_D) {
-            cout << "Trace is A_B. Tips for both." << endl;
+            //cout << "Trace is A_B. Tips for both." << endl;
             return 0;
         } else {
             if(A_equals_C) { // && !B_equals_D
                 if(betas[1] < betas[3]) {
-                    cout << "Case 6.1 " << endl;
-                    cout << "Trace is AB.Tips F1.no tips F2." << endl;
+                    //cout << "Case 6.1 " << endl;
+                    //cout << "Trace is AB.passante F1.no passante F2." << endl;
                     return -1;
                 } else {
-                    cout << "Case 6.2" << endl;
-                    cout << "Trace is CD. No tips for F1. Tips for F2." << endl;
+                    //cout << "Case 6.2" << endl;
+                    //cout << "Trace is CD. Non passante for F1. passante for F2." << endl;
                     return -2;
                 }
             } else if(B_equals_D) { // && !A_equals_C
                 if(betas[0] < betas[2]) {
-                    cout << "Case 7.1" << endl;
-                    cout << "Trace is CD. No tips F1. Tips F2" << endl;
-                    return -4;
+                    //cout << "Case 7.1" << endl;
+                    //cout << "Trace is CD. Non passante  F1. passante F2" << endl;
+                    return -3;
                 } else {
-                    cout << "Case 7.2" << endl;
-                    cout << "Trace is AB. tips F1. no tips F2" << endl;
-                    return -5;
+                    //cout << "Case 7.2" << endl;
+                    //cout << "Trace is AB. passante F1. non passante F2" << endl;
+                    return -4;
                 }
             } else { // no corresponding points
                 if(betas[1]< betas[2]) {
-                    cout << "Case 1. No trace." << endl;
+                    //cout << "Case 1. No trace." << endl;
                     return 1;
                 }
                 if(betas[2] < betas[0] && betas[1] < betas[3]) {
-                    cout << "Case 2. Trace is AB. Tips F1. No tips F2." << endl;
+                    //cout << "Case 2. Trace is AB. Passante F1. Non passante F2." << endl;
                     return 2;
                 }
                 if(betas[0] < betas[2] && betas[2] < betas[1] && betas[1] < betas[3]) {
-                    cout << "Case 3. Trace is CB. No tips." << endl;
+                    //cout << "Case 3. Trace is CB. Non passante." << endl;
                     return 3;
                 }
                 if(betas[2] < betas[0] && betas[0] < betas[3] && betas[3] < betas[1]) {
-                    cout << "Case 4. Trace is AD. No tips." << endl;
+                    //cout << "Case 4. Trace is AD. Non passante." << endl;
                     return 4;
                 }
                 if(betas[3] < betas[0]) {
-                    cout << "Case 5. No trace." << endl;
+                    //cout << "Case 5. No trace." << endl;
                     return 5;
                 }
                 if(betas[0] < betas[2] && betas[3] < betas[1]) {
-                    cout << "Case 6. Trace is CD. F1 no tips. F2 tips." << endl;
+                    //cout << "Case 6. Trace is CD. F1 non passante. F2 passante." << endl;
                     return 6;
                 }
 
             }
 
         }
-
-        return 0;
+        cerr << "Something went wrong" << endl;
+        return 100;
     }
+
+    void exportTraces(const string& outputFileName, const Traces &TracesList) {
+        ofstream file;
+        file.open(outputFileName);
+        if(file.fail()) {
+            cerr << "Something went wrong opening output file." << endl;
+        }
+        file << "# Number of Traces" << endl;
+        const unsigned int num_traces = TracesList.TraceIDFractures.size();
+        file << num_traces << endl;
+        file << "# TraceId; FractureId1; FractureId2; X1; Y1; Z1; X2; Y2; Z2" << endl;
+        for(unsigned int k=0;k<num_traces;k++) {
+            file << k << "; ";
+            file << scientific << setprecision(16) << TracesList.TraceIDFractures[k][0] << "; ";
+            file << TracesList.TraceIDFractures[k][1] << "; ";
+            file << TracesList.TraceCoordinates[k](0,0) << "; ";
+            file << TracesList.TraceCoordinates[k](1,0) << "; ";
+            file << TracesList.TraceCoordinates[k](2,0) << "; ";
+            file << TracesList.TraceCoordinates[k](0,1) << "; ";
+            file << TracesList.TraceCoordinates[k](1,1) << "; ";
+            file << TracesList.TraceCoordinates[k](2,1) << endl;
+        }
+    }
+
+    void exportFractures(const string &outputFileName, Fractures &FractureList, const Traces &TracesList) {
+        ofstream file;
+        file.open(outputFileName);
+        if(file.fail()) {
+            cerr << "Something went wrong opening output file." << endl;
+        }
+        const unsigned int num_fractures = FractureList.FractVertices.size();
+        for(unsigned int k=0; k<num_fractures; k++) {
+            file << "#FractureId; NumTraces" << endl;
+            const unsigned int num_non_tips_traces = FractureList.listTraces[k][false].size();
+            const unsigned int num_tips_traces = FractureList.listTraces[k][true].size();
+            file << k << "; " << num_non_tips_traces + num_tips_traces << endl;
+            if(num_non_tips_traces + num_tips_traces == 0) {
+                continue;
+            }
+            file << "# TraceId; Tips; Length" << endl;
+            vector<unsigned int> non_tips_traces = FractureList.listTraces[k][false];
+            if(non_tips_traces.size() > 0) {
+                MergeSortTraces(non_tips_traces, TracesList.TraceLength); // sort traces by their length
+                for(unsigned int l=0;l<non_tips_traces.size();l++) {
+                    file << non_tips_traces[l] << "; " << false << "; " << scientific << setprecision(16) << sqrt(TracesList.TraceLength.at(non_tips_traces[l])) << ";" << endl;
+                }
+            }
+            vector<unsigned int> tips_traces = FractureList.listTraces[k][true];
+            if(tips_traces.size() > 0) {
+                MergeSortTraces(tips_traces, TracesList.TraceLength); // sort traces by their length
+                for(unsigned int l=0;l<tips_traces.size();l++) {
+                    file << tips_traces[l] << "; " << true << "; " << scientific << setprecision(16) << sqrt(TracesList.TraceLength[tips_traces[l]]) << ";" << endl;
+                }
+            }
+        }
+
+    }
+
+    void computeTracesSquaredLength(Traces &TracesList) {
+        const unsigned int num_traces = TracesList.TraceCoordinates.size();
+        TracesList.TraceLength.reserve(num_traces);
+        for(unsigned int k=0;k<num_traces;k++) {
+            const Vector3d P1 = TracesList.TraceCoordinates[k].col(0);
+            const Vector3d P2 = TracesList.TraceCoordinates[k].col(1); // points of first trace
+            TracesList.TraceLength.push_back(computeSquaredDistancePoints(P1,P2)); // squared length of trace
+        }
+    }
+
 }
+

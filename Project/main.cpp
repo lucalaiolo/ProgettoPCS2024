@@ -3,12 +3,11 @@
 #include "UCDUtilities.hpp"
 #include <iostream>
 using namespace std;
-using namespace FractureLibrary;
+using namespace DFNLibrary;
 int main()
 {
     Fractures F;
     Traces T;
-    importFractureList("./DFN/FR3_data.txt", F);
-    computeTraces(F,T);
+    importFractureList("./DFN/FR10_data.txt", F, T);
     return 0;
 }
