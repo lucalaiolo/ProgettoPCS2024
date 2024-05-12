@@ -1,7 +1,6 @@
 #pragma once
 #include<iostream>
 #include "Eigen/Eigen"
-
 using namespace std;
 using namespace Eigen;
 
@@ -30,6 +29,8 @@ struct Traces {
 ///  listTraces[i][false] is a vector<unsigned int> that contains the ids of the traces belonging to the fracture with id i such that both
 /// of their end points belong to the edges of the fracture considered.
 struct Fractures {
+    //MatrixXd VerticesCoordinates;
+    //vector<vector<unsigned int>> listVertices;
     vector<MatrixXd> FractVertices;
     vector<map<bool,vector<unsigned int>>> listTraces;
 };
@@ -128,5 +129,13 @@ void exportFractures(const string& outputFileName, Fractures& FractureList, cons
 /// \param TracesList: a Traces struct
 ///
 void computeTracesSquaredLength(Traces& TracesList);
+
+
+///
+/// \brief exportParaview: exports a .inp file readable by paraview
+/// \param outputFileName: name of output file
+///
+void exportParaview(const string& outputFileName, const Fractures& FractureList);
+
 }
 

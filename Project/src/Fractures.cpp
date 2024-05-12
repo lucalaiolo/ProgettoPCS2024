@@ -1,5 +1,6 @@
 #include "Fractures.hpp"
 #include "Sorting.hpp"
+#include "UCDUtilities.hpp"
 #include<iostream>
 #include "Eigen/Eigen"
 #include <fstream>
@@ -17,6 +18,21 @@ namespace DFNLibrary {
                 // cout << "Fracture " << i<< endl;
                 // cout << "Fracture " << j<< endl << endl;
                 // we must check if it's possible that two fractures can intersect
+
+                // const vector<unsigned int> Fract1_list_vertices_id = listVertices[i];
+                // const vector<unsigned int> Fract2_list_vertices_id = listVertices[j];
+                // const unsigned int num_vertices_frac1 = Fract1_list_vertices_id.size();
+                // const unsigned int num_vertices_frac2 = Fract2_list_vertices_id.size();
+
+                // const MatrixXd Fract1_vertices = MatrixXd::Zero(3,num_vertices_frac1);
+                // const MatrixXd Fract2_vertices = MatrixXd::Zero(3,num_vertices_frac2);
+                // for(unsigned int k=0;k<num_vertices_frac1;k++) {
+                //      Fract1_vertices.col(k)=listVertices[Fract1_list_vertices_id[k]];
+                // }
+                // for(unsigned int k=0;k<num_vertices_frac2;k++) {
+                //      Fract2_vertices.col(k)=listVertices[Fract2_list_vertices_id[k]];
+                // }
+
                 const MatrixXd Fract1_vertices = FractureList.FractVertices[i];
                 const MatrixXd Fract2_vertices = FractureList.FractVertices[j];
 
@@ -426,5 +442,30 @@ namespace DFNLibrary {
         }
     }
 
+
+    void exportParaview(const string &outputFileName, const Fractures& FractureList) {
+        Gedim::UCDUtilities exporter;
+        vector<vector<unsigned int>> quadrilaterals;
+        quadrilaterals.resize(FractureList.FractVertices.size());
+        for(unsigned int k=0;k<quadrilaterals.size();k++) {
+            quadrilaterals[k] = {4*k,4*k+1,4*k+2,4*k+3};
+        }
+        VectorXi materials = VectorXi::Zero(FractureList.FractVertices.size());
+        for(unsigned int k=0;k<materials.size();k++) {
+            materials(k) = k;
+        }
+        MatrixXd VerticesCoordinates = MatrixXd::Zero(3,FractureList.FractVertices.size()*4);
+        for(unsigned int k=0;k<FractureList.FractVertices.size();k++) {
+            for(unsigned int l=0;l<FractureList.FractVertices[k].cols();l++) {
+                VerticesCoordinates.col(4*k+l) = FractureList.FractVertices[k].col(l);
+            }
+        }
+        exporter.ExportPolygons(outputFileName,
+                                VerticesCoordinates,
+                                quadrilaterals,
+                                {},
+                                {},
+                                materials);
+    }
 }
 
