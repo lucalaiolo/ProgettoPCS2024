@@ -8,6 +8,9 @@ int main()
 {
     Fractures F;
     Traces T;
-    importFractureList("./DFN/FR10_data.txt", F, T);
+    importFractureList("./DFN/FR362_data.txt", F, T);
+
+    exportParaview("./DFN362.inp",F);
+
     return 0;
 }
