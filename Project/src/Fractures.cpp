@@ -88,7 +88,7 @@ namespace DFNLibrary {
                         continue;
                     }
                     Vector2d alpha_beta = lu_decomp.solve(c);
-                    if(fabs(alpha_beta(0)) > 1) {
+                    if(alpha_beta(0) > 1.0 || alpha_beta(0) < 0.0) {
                         continue; // intersection does not belong to the segment
                     }
                     betas.push_back(alpha_beta(1));
