@@ -66,5 +66,10 @@ int main()
     exportParaview("./DFN200.inp",F);
     computePolygonalMesh(F,T,tol);
     exportFractureMesh("./mesh.inp",F,4);
+    if(!printFractureMesh("./Cell0Ds.csv", "./Cell1Ds.csv", "./Cell2Ds.csv", F)) {
+        cerr << "Something went wrong!" << endl;
+        return 1;
+    }
+
     return 0;
 }
