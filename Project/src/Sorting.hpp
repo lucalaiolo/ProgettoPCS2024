@@ -6,7 +6,7 @@
 using namespace std;
 using namespace Eigen;
 using namespace DFNLibrary;
-
+using namespace GeometryLibrary;
 namespace SortingLibrary {
 
 void MergeTraces(vector<unsigned int>& traces_ids, vector<double> traces_length,

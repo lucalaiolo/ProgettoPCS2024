@@ -1,5 +1,6 @@
 #include "Fractures.hpp"
 #include "Sorting.hpp"
+#include "Polygons.hpp"
 #include "UCDUtilities.hpp"
 #include<iostream>
 #include "Eigen/Eigen"
@@ -8,30 +9,83 @@
 using namespace std;
 using namespace Eigen;
 using namespace SortingLibrary;
+using namespace GeometryLibrary;
 namespace DFNLibrary {
+//*********************************************************
+    bool importFractureList(const string &filepath, Fractures &FractureList) {
+        ifstream inputFile(filepath);
+        if(inputFile.fail()) {
+            cerr << "Something went wrong." << endl;
+            return false;
+        }
+        string line;
+        getline(inputFile,line); // skip header
+        getline(inputFile,line);
+        unsigned int numFractures;
+        istringstream convertN(line);
+        convertN >> numFractures;
+        convertN.clear(); // clear istringstream object
+        FractureList.FractVertices.resize(numFractures);
+        FractureList.listTraces.resize(numFractures);
+        FractureList.FractPlanes.resize(numFractures);
+        FractureList.FractMeanPoint.resize(numFractures);
+        FractureList.FractMesh.resize(numFractures);
 
-    void computeTraces(Fractures &FractureList, Traces &TracesList) {
+        for(unsigned int i=0;i<numFractures;i++) {
+            unsigned int numVertices;
+            getline(inputFile,line); // skip line
+            getline(inputFile,line,';');
+            getline(inputFile,line);
+            convertN.str(line);
+            convertN >> numVertices;
+            convertN.clear(); // clear istringstream object
+            FractureList.FractVertices[i] = MatrixXd::Zero(3,numVertices);
+            getline(inputFile,line); // skip line
+            double mean_x = 0.0;
+            double mean_y = 0.0;
+            double mean_z = 0.0;
+            for(unsigned int j=0; j<3; j++) {
+                getline(inputFile,line);
+                replace(line.begin(),line.end(),';',' ');
+                convertN.str(line);
+                for(unsigned int k=0;k<numVertices;k++) {
+                    convertN >> FractureList.FractVertices[i](j,k);
+                    if(j==0){
+                        mean_x += FractureList.FractVertices[i](j,k);
+                    } else if(j==1){
+                        mean_y += FractureList.FractVertices[i](j,k);
+                    } else {
+                        mean_z += FractureList.FractVertices[i](j,k);
+                    }
+                }
+                convertN.clear(); // clear istringstream object
+            }
+            // compute mean point of i-th fracture
+            Vector3d mean_point = {mean_x, mean_y, mean_z};
+            mean_point = mean_point/numVertices;
+            FractureList.FractMeanPoint[i] = mean_point;
+
+            // compute plane of i-th fracture
+            const Vector3d P1_P0 = FractureList.FractVertices[i].col(1) - FractureList.FractVertices[i].col(0);
+            const Vector3d P2_P0 = FractureList.FractVertices[i].col(2) - FractureList.FractVertices[i].col(0);
+            Vector3d n = (P1_P0).cross(P2_P0);
+            n = n/n.norm();
+            const double d = n.dot(FractureList.FractVertices[i].col(0));
+            Plane FractPlane(n,d);
+            FractureList.FractPlanes[i] = (FractPlane);
+            FractureList.listTraces[i][true].reserve(numFractures/3);
+            FractureList.listTraces[i][false].reserve(numFractures/3);
+        }
+        inputFile.close();
+        return true;
+    }
+//*********************************************************
+    void computeTraces(Fractures &FractureList, Traces &TracesList, const double& tol) {
+
         const unsigned int numFractures = FractureList.FractVertices.size();
-        unsigned int count = 0; // variable that will tell us the id of the computed traces
+        unsigned int count = 0; // variable that will tell us the id of the computed trace
         for(unsigned int i=0;i<numFractures;i++) {
             for(unsigned int j=i+1;j<numFractures;j++){ // intersection is commutative
-                // cout << "Fracture " << i<< endl;
-                // cout << "Fracture " << j<< endl << endl;
-                // we must check if it's possible that two fractures can intersect
-
-                // const vector<unsigned int> Fract1_list_vertices_id = listVertices[i];
-                // const vector<unsigned int> Fract2_list_vertices_id = listVertices[j];
-                // const unsigned int num_vertices_frac1 = Fract1_list_vertices_id.size();
-                // const unsigned int num_vertices_frac2 = Fract2_list_vertices_id.size();
-
-                // const MatrixXd Fract1_vertices = MatrixXd::Zero(3,num_vertices_frac1);
-                // const MatrixXd Fract2_vertices = MatrixXd::Zero(3,num_vertices_frac2);
-                // for(unsigned int k=0;k<num_vertices_frac1;k++) {
-                //      Fract1_vertices.col(k)=listVertices[Fract1_list_vertices_id[k]];
-                // }
-                // for(unsigned int k=0;k<num_vertices_frac2;k++) {
-                //      Fract2_vertices.col(k)=listVertices[Fract2_list_vertices_id[k]];
-                // }
 
                 const MatrixXd Fract1_vertices = FractureList.FractVertices[i];
                 const MatrixXd Fract2_vertices = FractureList.FractVertices[j];
@@ -39,24 +93,22 @@ namespace DFNLibrary {
                 const unsigned int Fract1_numVertices = Fract1_vertices.cols();
                 const unsigned int Fract2_numVertices = Fract2_vertices.cols();
 
-                if(!checkIntersectionPossibility(Fract1_vertices,Fract2_vertices)) {
+                if(!checkIntersectionPossibility(Fract1_vertices,Fract2_vertices,FractureList.FractMeanPoint[i],FractureList.FractMeanPoint[j],tol)) {
                     continue;
                 }
-                // else, compute traces  
-                // Step 1: compute plane in which the i-th fracture lies
-                const Vector3d P1_P0 =  (Fract1_vertices.col(1)-Fract1_vertices.col(0));
-                const Vector3d P2_P0 = (Fract1_vertices.col(2)-Fract1_vertices.col(0));
-                const Vector3d n1 = (P1_P0).cross(P2_P0);
-                const double d1 = n1.dot(Fract1_vertices.col(0));
-                // Step 2: compute plane in which the j-th fracture lies
-                const Vector3d Q1_Q0 =  (Fract2_vertices.col(1)-Fract2_vertices.col(0));
-                const Vector3d Q2_Q0 = (Fract2_vertices.col(2)-Fract2_vertices.col(0));
-                const Vector3d n2 = (Q1_Q0).cross(Q2_Q0);
-                const double d2 = n2.dot(Fract2_vertices.col(0));
+                // else, compute traces
+
+                // Plane 1:
+                const Vector3d n1 = FractureList.FractPlanes[i].Normal;
+                const double d1 = FractureList.FractPlanes[i].d;
+
+                // Plane 2:
+                const Vector3d n2 = FractureList.FractPlanes[j].Normal;
+                const double d2 = FractureList.FractPlanes[j].d;
 
                 // find line of intersection between the two planes
                 const Vector3d t = n1.cross(n2);
-                if(t.dot(t) < 2.2e-16) {
+                if(fabs(t(0)) < tol && fabs(t(1))<tol && fabs(t(2)) < tol) {
                     // cout << "Planes are parallel."<< endl;
                     continue;
                 }
@@ -78,19 +130,30 @@ namespace DFNLibrary {
 
                 MatrixXd M2 = MatrixXd::Zero(3,2);
                 for(unsigned int k=0;k<Fract1_numVertices;k++) {
-                    Vector3d E1 = Fract1_vertices.col(k);
-                    Vector3d E2 = Fract1_vertices.col((k+1)%Fract1_numVertices);
+                    const Vector3d E1 = Fract1_vertices.col(k);
+                    const Vector3d E2 = Fract1_vertices.col((k+1)%Fract1_numVertices);
                     M2.col(0) = E1-E2;
                     M2.col(1) = -t;
-                    Vector3d c = P - E2;
-                    FullPivLU<Eigen::MatrixXd> lu_decomp(M2);
-                    if(lu_decomp.rank() != 2) {
-                        continue;
+                    const Vector3d c = P - E2;
+
+                    // we check whether the segment and the line are coplanar and non parallel
+                    const Vector3d temp_vec = t.cross((E1-E2)/((E1-E2).norm()));
+                    if(fabs(temp_vec(0))<tol && fabs(temp_vec(1))<tol && fabs(temp_vec(2))<tol) {
+                        continue; // segment and line are parallel
                     }
-                    Vector2d alpha_beta = lu_decomp.solve(c);
-                    if(alpha_beta(0) > 1.0 || alpha_beta(0) < 0.0) {
+
+                    if(fabs((c/(c.norm())).dot(temp_vec)) > tol) {
+                        continue; // distance between lines is positive --> no intersection
+                    }
+                    // else, we must compute the intersection
+
+                    Vector2d alpha_beta = M2.fullPivLu().solve(c);
+
+
+                    if(alpha_beta(0) > 1.0+tol || alpha_beta(0) < -tol) {
                         continue; // intersection does not belong to the segment
                     }
+
                     betas.push_back(alpha_beta(1));
                     A_B_C_D.push_back(alpha_beta(0)*E1+(1-alpha_beta(0))*E2);
                     if(A_B_C_D.size()==2) { // optimization: given our hypothesis of convexity, there can't be more than two points of intersection
@@ -107,12 +170,22 @@ namespace DFNLibrary {
                     M2.col(0) = E1-E2;
                     M2.col(1) = -t;
                     Vector3d c = P - E2;
-                    FullPivLU<Eigen::MatrixXd> lu_decomp(M2);
-                    if(lu_decomp.rank() != 2) {
-                        continue;
+
+                    // we check whether the segment and the line are coplanar and non parallel
+                    const Vector3d temp_vec = t.cross((E1-E2)/((E1-E2).norm()));
+                    if(fabs(temp_vec(0))<tol && fabs(temp_vec(1))<tol && fabs(temp_vec(2))<tol) {
+                        continue; // segment and line are parallel
                     }
-                    Vector2d alpha_beta = lu_decomp.solve(c);
-                    if(fabs(alpha_beta(0)) > 1) {
+
+                    if(fabs((c/(c.norm())).dot(temp_vec)) > tol) {
+                        continue; // distance between lines is positive --> no intersection
+                    }
+
+                    // else, we must compute the intersection
+
+                    Vector2d alpha_beta = M2.fullPivLu().solve(c);
+
+                    if(alpha_beta(0) > 1.0+tol|| alpha_beta(0) < -tol) {
                         continue; // intersection does not belong to the segment
                     }
                     betas.push_back(alpha_beta(1));
@@ -152,7 +225,7 @@ namespace DFNLibrary {
                 }
 
 
-                const int n = findCase(betas);
+                const int n = findCase(betas,tol);
 
                 if(n==0) {
                     //cout << "Trace is A_B. False for both." << endl;
@@ -192,71 +265,31 @@ namespace DFNLibrary {
 
             }
         }
+        for(unsigned int i=0;i<numFractures;i++){
+            FractureList.listTraces[i][true].shrink_to_fit();
+            FractureList.listTraces[i][false].shrink_to_fit();
+        }
         computeTracesSquaredLength(TracesList);
         exportTraces("Traces.txt", TracesList);
         exportFractures("Fractures.txt", FractureList, TracesList);
 
     }
-
-    bool importFractureList(const string &filepath, Fractures &FractureList, Traces& TracesList) {
-        ifstream inputFile(filepath);
-        if(inputFile.fail()) {
-            cerr << "Something went wrong." << endl;
-            return false;
-        }
-        string line;
-        getline(inputFile,line); // skip header
-        getline(inputFile,line);
-        unsigned int numFractures;
-        istringstream convertN(line);
-        convertN >> numFractures;
-        convertN.clear(); // clear istringstream object
-        FractureList.FractVertices.resize(numFractures);
-        FractureList.listTraces.resize(numFractures);
-        for(unsigned int i=0;i<numFractures;i++) {
-            unsigned int numVertices;
-            getline(inputFile,line); // skip line
-            getline(inputFile,line,';');
-            getline(inputFile,line);
-            convertN.str(line);
-            convertN >> numVertices;
-            convertN.clear(); // clear istringstream object
-            FractureList.FractVertices[i] = MatrixXd::Zero(3,numVertices);
-            getline(inputFile,line); // skip line
-            for(unsigned int j=0; j<3; j++) {
-                getline(inputFile,line);
-                replace(line.begin(),line.end(),';',' ');
-                convertN.str(line);
-                for(unsigned int k=0;k<numVertices;k++) {
-                    convertN >> FractureList.FractVertices[i](j,k);
-                }
-                convertN.clear(); // clear istringstream object
-            }
-        }
-        inputFile.close();
-        computeTraces(FractureList,TracesList);
-        return true;
-    }
-
-    inline double computeSquaredDistancePoints(const Vector3d Point1, const Vector3d Point2) {
+//*********************************************************
+    inline double computeSquaredDistancePoints(const Vector3d &Point1, const Vector3d &Point2) {
         double dist = 0.0;
         for(unsigned int i=0;i<3;i++) {
             dist += (Point1(i)-Point2(i))*(Point1(i)-Point2(i));
         }
         return dist;
     }
-
+//*********************************************************
     inline void executeCase(unsigned int &count, const unsigned int &i, const unsigned int &j,
                             const unsigned int &pos1, const unsigned int &pos2, const vector<Vector3d> &A_B_C_D,
                             const array<bool, 2> &tips, Fractures &FractureList, Traces &TracesList) {
         MatrixXd trace_coord = MatrixXd::Zero(3,2);
         trace_coord.col(0) = A_B_C_D[pos1];
         trace_coord.col(1) = A_B_C_D[pos2];
-        //
-        //
-        // MIGLIORARE QUI PUSH BACK
-        //
-        //
+
         auto ret1 = FractureList.listTraces[i].insert({tips[0], {count}});
         if(!ret1.second)
             (*(ret1.first)).second.push_back(count);
@@ -268,52 +301,42 @@ namespace DFNLibrary {
         TracesList.TraceCoordinates.push_back(trace_coord);
         count++;
     }
-
-    bool checkIntersectionPossibility(const MatrixXd &Fract1_vertices, const MatrixXd &Fract2_vertices) {
+//*********************************************************
+    bool checkIntersectionPossibility(const MatrixXd &Fract1_vertices, const MatrixXd &Fract2_vertices,
+                                      const Vector3d& meanPoint1, const Vector3d& meanPoint2, const double& tol) {
         const unsigned int Fract1_numVertices = Fract1_vertices.cols();
         const unsigned int Fract2_numVertices = Fract2_vertices.cols();
 
-        Vector3d Fract1_meanPoint;
-        Vector3d Fract2_meanPoint;
-        for(unsigned int k=0;k<Fract1_numVertices;k++) {
-            Fract1_meanPoint +=  Fract1_vertices.col(k);
-        }
-        for(unsigned int k=0;k<Fract2_numVertices;k++) {
-            Fract2_meanPoint += Fract2_vertices.col(k);
-        }
-        Fract1_meanPoint = Fract1_meanPoint/Fract1_numVertices;
-        Fract2_meanPoint = Fract2_meanPoint/Fract2_numVertices;
-
         // We find the maximum distance between Fract[i]_meanPoint and the vertices of the fracture i
 
-        double squared_rho1 = computeSquaredDistancePoints(Fract1_meanPoint, Fract1_vertices.col(0));
-        double squared_rho2 = computeSquaredDistancePoints(Fract2_meanPoint,Fract2_vertices.col(0));
+        double squared_rho1 = computeSquaredDistancePoints(meanPoint1, Fract1_vertices.col(0));
+        double squared_rho2 = computeSquaredDistancePoints(meanPoint2,Fract2_vertices.col(0));
         double temp1  = 0.0;
         double temp2 = 0.0;
         for(unsigned int k=1;k<Fract1_numVertices;k++) {
-            temp1 = computeSquaredDistancePoints(Fract1_meanPoint,Fract1_vertices.col(k));
+            temp1 = computeSquaredDistancePoints(meanPoint1,Fract1_vertices.col(k));
             if(temp1 > squared_rho1) {
                 squared_rho1 = temp1;
             }
         }
         for(unsigned int k=1;k<Fract2_numVertices;k++) {
-            temp2 = computeSquaredDistancePoints(Fract2_meanPoint,Fract2_vertices.col(k));
+            temp2 = computeSquaredDistancePoints(meanPoint2,Fract2_vertices.col(k));
             if(temp2 > squared_rho2) {
                 squared_rho2 = temp2;
             }
         }
         const double rho1 = sqrt(squared_rho1);
         const double rho2 = sqrt(squared_rho2);
-        const double meanPointsDistance = sqrt(computeSquaredDistancePoints(Fract1_meanPoint,Fract2_meanPoint));
-        if(rho1+rho2 < meanPointsDistance) {
+        const double meanPointsDistance = sqrt(computeSquaredDistancePoints(meanPoint1,meanPoint2));
+        if(rho1+rho2 < meanPointsDistance-tol) {
             return false;
         }
         return true;
     }
-
-    int findCase(const vector<double> &betas) {
+//*********************************************************
+    int findCase(const vector<double> &betas, const double &tol) {
         // we first check if any of these points coincide
-        const double tol = 2.2e-16;
+
         const bool A_equals_C = (fabs(betas[0]-betas[2])/max(max(fabs(betas[0]),fabs(betas[2])),{1}) < tol);
         //bool A_equals_D = (fabs(betas[0]-betas[3])/max(max(fabs(betas[0]),fabs(betas[3])),{1}) < tol); // not possible under our hypotheses
         // bool B_equals_C = (fabs(betas[1]-betas[2])/max(max(fabs(betas[1]),fabs(betas[2])),{1}) < tol); // not possible under our hypotheses
@@ -374,7 +397,7 @@ namespace DFNLibrary {
         cerr << "Something went wrong" << endl;
         return 100;
     }
-
+//*********************************************************
     void exportTraces(const string& outputFileName, const Traces &TracesList) {
         ofstream file;
         file.open(outputFileName);
@@ -397,7 +420,7 @@ namespace DFNLibrary {
             file << TracesList.TraceCoordinates[k](2,1) << endl;
         }
     }
-
+//*********************************************************
     void exportFractures(const string &outputFileName, Fractures &FractureList, const Traces &TracesList) {
         ofstream file;
         file.open(outputFileName);
@@ -414,35 +437,1024 @@ namespace DFNLibrary {
                 continue;
             }
             file << "# TraceId; Tips; Length" << endl;
-            vector<unsigned int> non_tips_traces = FractureList.listTraces[k][false];
-            if(non_tips_traces.size() > 0) {
-                MergeSortTraces(non_tips_traces, TracesList.TraceLength); // sort traces by their length
-                for(unsigned int l=0;l<non_tips_traces.size();l++) {
-                    file << non_tips_traces[l] << "; " << false << "; " << scientific << setprecision(16) << sqrt(TracesList.TraceLength.at(non_tips_traces[l])) << ";" << endl;
+
+            if(num_non_tips_traces > 0) {
+                MergeSortTraces(FractureList.listTraces[k][false], TracesList.TraceLength); // sort traces by their length
+                for(unsigned int l=0;l<FractureList.listTraces[k][false].size();l++) {
+                    file << FractureList.listTraces[k][false][l] << "; " << false << "; " << scientific << setprecision(16) << TracesList.TraceLength[FractureList.listTraces[k][false][l]] << ";" << endl;
                 }
             }
-            vector<unsigned int> tips_traces = FractureList.listTraces[k][true];
-            if(tips_traces.size() > 0) {
-                MergeSortTraces(tips_traces, TracesList.TraceLength); // sort traces by their length
-                for(unsigned int l=0;l<tips_traces.size();l++) {
-                    file << tips_traces[l] << "; " << true << "; " << scientific << setprecision(16) << sqrt(TracesList.TraceLength[tips_traces[l]]) << ";" << endl;
+
+            if(num_tips_traces > 0) {
+                MergeSortTraces(FractureList.listTraces[k][true], TracesList.TraceLength); // sort traces by their length
+                for(unsigned int l=0;l<FractureList.listTraces[k][true].size();l++) {
+                    file << FractureList.listTraces[k][true][l] << "; " << true << "; " << scientific << setprecision(16) << TracesList.TraceLength[FractureList.listTraces[k][true][l]] << ";" << endl;
                 }
             }
         }
 
     }
-
+//*********************************************************
     void computeTracesSquaredLength(Traces &TracesList) {
         const unsigned int num_traces = TracesList.TraceCoordinates.size();
         TracesList.TraceLength.reserve(num_traces);
         for(unsigned int k=0;k<num_traces;k++) {
             const Vector3d P1 = TracesList.TraceCoordinates[k].col(0);
             const Vector3d P2 = TracesList.TraceCoordinates[k].col(1); // points of first trace
-            TracesList.TraceLength.push_back(computeSquaredDistancePoints(P1,P2)); // squared length of trace
+            TracesList.TraceLength.push_back(sqrt(computeSquaredDistancePoints(P1,P2))); // squared length of trace
         }
     }
+//*********************************************************
+    void computePolygonalMesh(Fractures &FractureList, const Traces &TracesList, const double &tol) {
+        const unsigned int numFractures = FractureList.FractVertices.size();
+
+         for(unsigned int i=0; i<numFractures; i++) {
+            // initialize polygonal mesh
+            cout << "Frattura " << i << endl;
+            MatrixXd vertices = FractureList.FractVertices[i];
+            PolygonalMesh mesh;
+            unsigned int num_vertices = vertices.cols();
+            unsigned int num_edges = num_vertices;
+            unsigned int num_polygons = 1; // first iteration, the only polygon is the fracture itself
+
+            mesh.NumberCell0D = num_vertices;
+            mesh.Cell0DCoordinates.resize(num_vertices);
+            mesh.Cell0DId.resize(num_vertices);
+
+            mesh.NumberCell1D = num_edges;
+            mesh.Cell1DId.resize(num_edges);
+            mesh.Cell1DVertices.resize(num_edges);
+
+            mesh.NumberCell2D = 1;
+            mesh.Cell2DId.resize(1);
+            mesh.Cell2DVertices.resize(1);
+            mesh.Cell2DEdges.resize(1);
+
+            for(unsigned int i=0; i<num_vertices;i++) {
+                mesh.Cell0DId[i] = i;
+                mesh.Cell0DCoordinates[i] = vertices.col(i);
+
+                mesh.Cell1DId[i] = i;
+                mesh.Cell1DVertices[i] = {i, (i+1)%num_vertices};
+            }
+
+            mesh.Cell2DId[0] = 0;
+            mesh.Cell2DVertices[0] = mesh.Cell0DId;
+            mesh.Cell2DEdges[0] = mesh.Cell1DId;
+
+            // first polygonal mesh initialized
+            // we will now update it
+
+            // calculate the polygonal mesh for i-th fracture
+            vector<unsigned int> passing_traces = FractureList.listTraces[i][false];
+            vector<unsigned int> non_passing_traces = FractureList.listTraces[i][true];
+
+            const unsigned int num_passing_traces = passing_traces.size();
+            const unsigned int num_non_passing_traces = non_passing_traces.size();
+
+            if(num_passing_traces > 0) {
+                // compute
+                mesh.Cell0DId.reserve(2*num_passing_traces);
+                mesh.Cell0DCoordinates.reserve(2*num_passing_traces);
+
+                mesh.Cell1DId.reserve(5*num_passing_traces);
+                mesh.Cell1DVertices.reserve(5*num_passing_traces);
+
+                mesh.Cell2DId.reserve(num_passing_traces);
+                mesh.Cell2DVertices.reserve(num_passing_traces);
+                mesh.Cell2DEdges.reserve(num_passing_traces);
+
+                for(unsigned int j=0; j<num_passing_traces; j++) {
+                    // iterate on passing traces
+                    //cout << j << endl;
+                    num_polygons = mesh.NumberCell2D;
+                    const unsigned int trace_id = passing_traces[j];
+                    const MatrixXd trace_end_points = TracesList.TraceCoordinates[trace_id];
+                    const Vector3d Q0 = trace_end_points.col(0);
+                    const Vector3d Q1 = trace_end_points.col(1);
+                    for(unsigned int l=0;l<num_polygons;l++) { // iterate on every 2D cell
+
+                        // CHECK WHETHER THE TRACE CUTS THE POLYGON, AND IN WHICH POINTS
+                        num_edges = mesh.Cell2DEdges[l].size();
+
+                        vector<int> tempVec;
+                        tempVec.reserve(2);
+                        // at the end of the procedure, temp(0) will equal -1 if the first intersection does not coincide with any of the
+                        // vertices of the 2D cell. otherwise, it will be equal to the id of the edge in which that intersection is
+                        // the starting point. same for temp(1).
 
 
+                        vector<Vector3d> solVec = {};
+                        vector<unsigned int> edges_ids_sol = {};
+                        solVec.reserve(2); // solVec will contain the coordinates of the 2 points of intersection between the trace
+                        // and the edges of the 2D cell, if they exist
+                        edges_ids_sol.reserve(2); // edges_ids_sol will contain the ids of the edges in which
+                        // the possible two intersections lie
+                        bool skip = false;
+                        vector<unsigned int> iter;
+                        iter.reserve(2);
+                        for(unsigned int k=0;k<num_edges;k++) { // iterate on every edge of that 2D cell
+
+                            if(skip) {
+                                skip = false;
+                                continue;
+                            }
+
+                            const Vector3d P0 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][k]];
+                            const Vector3d P1 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][(k+1)%num_edges]];
+
+                            MatrixXd M = MatrixXd::Zero(3,2);
+                            M.col(0) = Q0-Q1;
+                            M.col(1) = P1-P0;
+                            const Vector3d b = P1-Q1;
+
+                            const Vector3d temp = (P1-P0).cross(Q1-Q0);  // check whether segments are parallel or not
+
+                            /// GESTIRE TOLLERANZA
+                            if(fabs(temp(0)) < tol && fabs(temp(1)) < tol && fabs(temp(2)) < tol) {
+                                continue; // there is no intersection, segments are parallel
+                            }
+
+                            FullPivLU<Eigen::MatrixXd> lu_decomp(M);
+                            const Vector2d alpha_beta = lu_decomp.solve(b);
+
+                            const double alpha = alpha_beta(0);
+                            const double beta = alpha_beta(1);
+                            const Vector3d P = alpha*(Q0-Q1)+Q1; // Point of intersection between the two lines
+                            /// GESTIRE TOLLERANZE
+
+                            if((alpha < -tol) || (alpha > 1+tol) || (beta < -tol) || (beta >1+tol)) {
+                                continue;
+                            } else {
+                                if(-tol <= beta && beta <= tol) {
+                                    // beta is basically equal to zero
+                                    // if this happens, the intersection coincides with P1
+                                    skip = true;
+                                    solVec.push_back(P1);
+                                    edges_ids_sol.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                    tempVec.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                    iter.push_back((k+1)%mesh.Cell2DEdges.size());
+                                } else if(tol < beta && beta < 1-tol) {
+                                    // intersection coincides with P
+                                    solVec.push_back(P);
+                                    edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]);
+                                    tempVec.push_back(-1);
+                                    iter.push_back(k);
+                                } else if(1-tol <= beta && beta <= 1+ tol) {
+                                    // beta is basically equal to 1
+                                    // if this happens, the intersection coincides with P0
+                                    solVec.push_back(P0);
+                                    edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                    tempVec.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                    iter.push_back(k);
+                                }
+                            }
+
+                            if(solVec.size()==2) {
+                                break;
+                            }
+
+                        } // chiudo il ciclo sui lati
+
+                        // we have now successfully calculated the intersection between the passing trace and the 2D
+                        // cell with Id l
+
+                        // we must now update the polygonal mesh
+
+                        if(solVec.size()!=2) {
+                            continue; // no update
+                        }
+                        if((solVec[0]-solVec[1]).norm() < tol) {
+                            continue;
+                        }
+
+                        cut(mesh, solVec, edges_ids_sol, tempVec, iter,l,tol);
+
+                    } // chiudo ciclo sui poligoni
+
+                } // chiudo ciclo sulle tracce
+
+            } // chiudo if sul numero delle tracce passanti
+
+            mesh.Cell0DId.shrink_to_fit();
+            mesh.Cell0DCoordinates.shrink_to_fit();
+
+            mesh.Cell1DId.shrink_to_fit();
+            mesh.Cell1DVertices.shrink_to_fit();
+
+            mesh.Cell2DId.shrink_to_fit();
+            mesh.Cell2DVertices.shrink_to_fit();
+            mesh.Cell2DEdges.shrink_to_fit();
+
+
+
+            if(num_non_passing_traces > 0) {
+                // compute
+                mesh.Cell0DId.reserve(2*num_non_passing_traces);
+                mesh.Cell0DCoordinates.reserve(2*num_non_passing_traces);
+
+                mesh.Cell1DId.reserve(5*num_non_passing_traces);
+                mesh.Cell1DVertices.reserve(5*num_non_passing_traces);
+
+                mesh.Cell2DId.reserve(num_non_passing_traces);
+                mesh.Cell2DVertices.reserve(num_non_passing_traces);
+                mesh.Cell2DEdges.reserve(num_non_passing_traces);
+
+                for(unsigned int j=0; j<num_non_passing_traces; j++) {
+                    // iterate on passing traces
+                    //cout << j << endl;
+                    num_polygons = mesh.NumberCell2D;
+                    const unsigned int trace_id = non_passing_traces[j];
+                    const MatrixXd trace_end_points = TracesList.TraceCoordinates[trace_id];
+                    const Vector3d Q0 = trace_end_points.col(0);
+                    const Vector3d Q1 = trace_end_points.col(1);
+                    for(unsigned int l=0;l<num_polygons;l++) { // iterate on every 2D cell
+                        // check whether Q0 and Q1 belong to the edges of the polygon
+                        int id1 = -1;
+                        int id2 = -1;
+                        const unsigned int num_edges = mesh.Cell2DEdges[l].size();
+                        for(unsigned int k=0;k<num_edges;k++) {
+                            const Vector3d P0 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][k]];
+                            const Vector3d P1 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][(k+1)%num_edges]];
+                            const double edge_length = sqrt(computeSquaredDistancePoints(P0,P1));
+                            if(id1==-1) {
+                                const double lengthQ0P0 = sqrt(computeSquaredDistancePoints(Q0,P0));
+                                const double lengthQ0P1 = sqrt(computeSquaredDistancePoints(Q0,P1));
+                                if(fabs(edge_length-lengthQ0P0-lengthQ0P1)<=tol) {
+                                    id1 = k;
+                                }
+                            }
+                            if(id2==-1) {
+                                const double lengthQ1P0 = sqrt(computeSquaredDistancePoints(Q1,P0));
+                                const double lengthQ1P1 = sqrt(computeSquaredDistancePoints(Q1,P1));
+                                if(fabs(edge_length-lengthQ1P0-lengthQ1P1)<=tol) {
+                                    id2 = k;
+                                }
+                            }
+                            if(id1!=-1 && id2!=-1) {
+                                break;
+                            }
+                        }
+
+                        // check whether trace lies inside the polygon or not
+                        bool inside_cellQ0 = false;
+                        bool inside_cellQ1 = false;
+
+                        if(id1==-1) {
+                            inside_cellQ0 = pointInsidePolygon(tol,Q0,mesh.Cell2DVertices[l],mesh.Cell0DCoordinates,FractureList.FractPlanes[i].Normal);
+                        }
+                        if(id2==-1) {
+                            inside_cellQ1 = pointInsidePolygon(tol,Q1,mesh.Cell2DVertices[l],mesh.Cell0DCoordinates,FractureList.FractPlanes[i].Normal);
+                        }
+                        if(id1==-1 && id2==-1) {
+                            if(inside_cellQ0 || inside_cellQ1) {
+
+                                vector<int> tempVec;
+                                tempVec.reserve(2);
+                                // at the end of the procedure, temp(0) will equal -1 if the first intersection does not coincide with any of the
+                                // vertices of the 2D cell. otherwise, it will be equal to the id of the edge in which that intersection is
+                                // the starting point. same for temp(1).
+
+                                vector<Vector3d> solVec = {};
+                                vector<unsigned int> edges_ids_sol = {};
+                                solVec.reserve(2); // solVec will contain the coordinates of the 2 points of intersection between the trace
+                                // and the edges of the 2D cell, if they exist
+                                edges_ids_sol.reserve(2); // edges_ids_sol will contain the ids of the edges in which
+                                // the possible two intersections lie
+                                bool skip = false;
+                                vector<unsigned int> iter;
+                                iter.reserve(2);
+                                for(unsigned int k=0;k<num_edges;k++) { // iterate on every edge of that 2D cell
+
+                                    if(skip) {
+                                        skip = false;
+                                        continue;
+                                    }
+
+                                    const Vector3d P0 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][k]];
+                                    const Vector3d P1 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][(k+1)%num_edges]];
+
+                                    MatrixXd M = MatrixXd::Zero(3,2);
+                                    M.col(0) = Q0-Q1;
+                                    M.col(1) = P1-P0;
+                                    const Vector3d b = P1-Q1;
+
+                                    const Vector3d temp = (P1-P0).cross(Q1-Q0);  // check whether segments are parallel or not
+
+                                    /// GESTIRE TOLLERANZA
+                                    if(fabs(temp(0)) < tol && fabs(temp(1)) < tol && fabs(temp(2)) < tol) {
+                                        continue; // there is no intersection, segments are parallel
+                                    }
+
+                                    FullPivLU<Eigen::MatrixXd> lu_decomp(M);
+                                    const Vector2d alpha_beta = lu_decomp.solve(b);
+
+                                    const double alpha = alpha_beta(0);
+                                    const double beta = alpha_beta(1);
+                                    const Vector3d P = alpha*(Q0-Q1)+Q1; // Point of intersection between the two lines
+                                    /// GESTIRE TOLLERANZE
+
+                                    if( (beta < -tol) || (beta >1+tol)) {
+                                        continue;
+                                    } else {
+                                        if(-tol <= beta && beta <= tol) {
+                                            // beta is basically equal to zero
+                                            // if this happens, the intersection coincides with P1
+                                            skip = true;
+                                            solVec.push_back(P1);
+                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            tempVec.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            iter.push_back((k+1)%mesh.Cell2DEdges.size());
+                                        } else if(tol < beta && beta < 1-tol) {
+                                            // intersection coincides with P
+                                            solVec.push_back(P);
+                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]);
+                                            tempVec.push_back(-1);
+                                            iter.push_back(k);
+                                        } else if(1-tol <= beta && beta <= 1+ tol) {
+                                            // beta is basically equal to 1
+                                            // if this happens, the intersection coincides with P0
+                                            solVec.push_back(P0);
+                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            tempVec.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            iter.push_back(k);
+                                        }
+                                    }
+
+                                    if(solVec.size()==2) {
+                                        break;
+                                    }
+
+                                } // chiudo il ciclo sui lati
+
+                                // we have now successfully calculated the intersection between the passing trace and the 2D
+                                // cell with Id l
+
+                                // we must now update the polygonal mesh
+
+                                if(solVec.size()!=2) {
+                                    continue; // no update
+                                }
+                                if((solVec[0]-solVec[1]).norm() < tol) {
+                                    continue;
+                                }
+
+                                cut(mesh,solVec,edges_ids_sol,tempVec,iter,l,tol);
+                                if(inside_cellQ0 && inside_cellQ1) {
+                                    break;
+                                }
+                            } else if(!inside_cellQ0 && !inside_cellQ1) {
+                                vector<int> tempVec;
+                                tempVec.reserve(2);
+                                // at the end of the procedure, temp(0) will equal -1 if the first intersection does not coincide with any of the
+                                // vertices of the 2D cell. otherwise, it will be equal to the id of the edge in which that intersection is
+                                // the starting point. same for temp(1).
+
+                                vector<Vector3d> solVec = {};
+                                vector<unsigned int> edges_ids_sol = {};
+                                solVec.reserve(2); // solVec will contain the coordinates of the 2 points of intersection between the trace
+                                // and the edges of the 2D cell, if they exist
+                                edges_ids_sol.reserve(2); // edges_ids_sol will contain the ids of the edges in which
+                                // the possible two intersections lie
+                                bool skip = false;
+                                vector<unsigned int> iter;
+                                iter.reserve(2);
+                                for(unsigned int k=0;k<num_edges;k++) { // iterate on every edge of that 2D cell
+
+                                    if(skip) {
+                                        skip = false;
+                                        continue;
+                                    }
+
+                                    const Vector3d P0 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][k]];
+                                    const Vector3d P1 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][(k+1)%num_edges]];
+
+                                    MatrixXd M = MatrixXd::Zero(3,2);
+                                    M.col(0) = Q0-Q1;
+                                    M.col(1) = P1-P0;
+                                    const Vector3d b = P1-Q1;
+
+                                    const Vector3d temp = (P1-P0).cross(Q1-Q0);  // check whether segments are parallel or not
+
+                                    /// GESTIRE TOLLERANZA
+                                    if(fabs(temp(0)) < tol && fabs(temp(1)) < tol && fabs(temp(2)) < tol) {
+                                        continue; // there is no intersection, segments are parallel
+                                    }
+
+                                    FullPivLU<Eigen::MatrixXd> lu_decomp(M);
+                                    const Vector2d alpha_beta = lu_decomp.solve(b);
+
+                                    const double alpha = alpha_beta(0);
+                                    const double beta = alpha_beta(1);
+                                    const Vector3d P = alpha*(Q0-Q1)+Q1; // Point of intersection between the two lines
+                                    /// GESTIRE TOLLERANZE
+
+                                    if((alpha < -tol) || (alpha > 1+tol) || (beta < -tol) || (beta >1+tol)) {
+                                        continue;
+                                    } else {
+                                        if(-tol <= beta && beta <= tol) {
+                                            // beta is basically equal to zero
+                                            // if this happens, the intersection coincides with P1
+                                            skip = true;
+                                            solVec.push_back(P1);
+                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            tempVec.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            iter.push_back((k+1)%mesh.Cell2DEdges.size());
+                                        } else if(tol < beta && beta < 1-tol) {
+                                            // intersection coincides with P
+                                            solVec.push_back(P);
+                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]);
+                                            tempVec.push_back(-1);
+                                            iter.push_back(k);
+                                        } else if(1-tol <= beta && beta <= 1+ tol) {
+                                            // beta is basically equal to 1
+                                            // if this happens, the intersection coincides with P0
+                                            solVec.push_back(P0);
+                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            tempVec.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            iter.push_back(k);
+                                        }
+                                    }
+
+                                    if(solVec.size()==2) {
+                                        break;
+                                    }
+
+                                } // chiudo il ciclo sui lati
+
+                                // we have now successfully calculated the intersection between the passing trace and the 2D
+                                // cell with Id l
+
+                                // we must now update the polygonal mesh
+
+                                if(solVec.size()!=2) {
+                                    continue; // no update
+                                }
+                                if((solVec[0]-solVec[1]).norm() < tol) {
+                                    continue;
+                                }
+
+                                cut(mesh,solVec,edges_ids_sol,tempVec,iter,l,tol);
+                            }
+
+                        } else if((id1!=-1 && id2==-1) || (id1==-1 && id2!=-1)) {
+                            // one point is outside or outside the polygon, the other one belongs to one of the edges
+                            vector<int> tempVec;
+                            tempVec.reserve(2);
+                            // at the end of the procedure, temp(0) will equal -1 if the first intersection does not coincide with any of the
+                            // vertices of the 2D cell. otherwise, it will be equal to the id of the edge in which that intersection is
+                            // the starting point. same for temp(1).
+
+                            vector<Vector3d> solVec = {};
+                            vector<unsigned int> edges_ids_sol = {};
+                            solVec.reserve(2); // solVec will contain the coordinates of the 2 points of intersection between the trace
+                            // and the edges of the 2D cell, if they exist
+                            edges_ids_sol.reserve(2); // edges_ids_sol will contain the ids of the edges in which
+                            // the possible two intersections lie
+                            bool skip = false;
+                            vector<unsigned int> iter;
+                            iter.reserve(2);
+                            for(unsigned int k=0;k<num_edges;k++) { // iterate on every edge of that 2D cell
+
+                                if(skip) {
+                                    skip = false;
+                                    continue;
+                                }
+
+                                const Vector3d P0 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][k]];
+                                const Vector3d P1 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][(k+1)%num_edges]];
+
+                                MatrixXd M = MatrixXd::Zero(3,2);
+                                M.col(0) = Q0-Q1;
+                                M.col(1) = P1-P0;
+                                const Vector3d b = P1-Q1;
+
+                                const Vector3d temp = (P1-P0).cross(Q1-Q0);  // check whether segments are parallel or not
+
+                                /// GESTIRE TOLLERANZA
+                                if(fabs(temp(0)) < tol && fabs(temp(1)) < tol && fabs(temp(2)) < tol) {
+                                    continue; // there is no intersection, segments are parallel
+                                }
+
+                                FullPivLU<Eigen::MatrixXd> lu_decomp(M);
+                                const Vector2d alpha_beta = lu_decomp.solve(b);
+
+                                const double alpha = alpha_beta(0);
+                                const double beta = alpha_beta(1);
+                                const Vector3d P = alpha*(Q0-Q1)+Q1; // Point of intersection between the two lines
+                                /// GESTIRE TOLLERANZE
+
+                                if((id1!=-1 && !inside_cellQ1) || (!inside_cellQ0 && id2!=-1)) {
+                                    if((alpha < -tol) || (alpha > 1+tol) || (beta < -tol) || (beta >1+tol)) {
+                                        continue;
+                                    } else {
+                                        if(-tol <= beta && beta <= tol) {
+                                            // beta is basically equal to zero
+                                            // if this happens, the intersection coincides with P1
+                                            skip = true;
+                                            solVec.push_back(P1);
+                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            tempVec.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            iter.push_back((k+1)%mesh.Cell2DEdges.size());
+                                        } else if(tol < beta && beta < 1-tol) {
+                                            // intersection coincides with P
+                                            solVec.push_back(P);
+                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]);
+                                            tempVec.push_back(-1);
+                                            iter.push_back(k);
+                                        } else if(1-tol <= beta && beta <= 1+ tol) {
+                                            // beta is basically equal to 1
+                                            // if this happens, the intersection coincides with P0
+                                            solVec.push_back(P0);
+                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            tempVec.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            iter.push_back(k);
+                                        }
+                                    }
+                                } else if((id1!=-1 && inside_cellQ1) || (inside_cellQ0 && id2!=-1)) {
+                                    // alpha can be anything in this case
+                                    if((beta < -tol) || (beta >1+tol)) {
+                                        continue;
+                                    } else {
+                                        if(-tol <= beta && beta <= tol) {
+                                            // beta is basically equal to zero
+                                            // if this happens, the intersection coincides with P1
+                                            skip = true;
+                                            solVec.push_back(P1);
+                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            tempVec.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            iter.push_back((k+1)%mesh.Cell2DEdges.size());
+                                        } else if(tol < beta && beta < 1-tol) {
+                                            // intersection coincides with P
+                                            solVec.push_back(P);
+                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]);
+                                            tempVec.push_back(-1);
+                                            iter.push_back(k);
+                                        } else if(1-tol <= beta && beta <= 1+ tol) {
+                                            // beta is basically equal to 1
+                                            // if this happens, the intersection coincides with P0
+                                            solVec.push_back(P0);
+                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            tempVec.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            iter.push_back(k);
+                                        }
+                                    }
+                                }
+
+                                if(solVec.size()==2) {
+                                    break;
+                                }
+
+                            } // chiudo il ciclo sui lati
+
+                            // we have now successfully calculated the intersection between the passing trace and the 2D
+                            // cell with Id l
+
+                            // we must now update the polygonal mesh
+
+                            if(solVec.size()!=2) {
+                                continue; // no update
+                            }
+                            if((solVec[0]-solVec[1]).norm() < tol) {
+                                continue;
+                            }
+
+                            cut(mesh,solVec,edges_ids_sol,tempVec,iter,l,tol);
+
+                            if((id1!=-1 && inside_cellQ1) || (inside_cellQ0 && id2!=-1)) {
+                                break;
+                            }
+                        } else if(id1 != -1 && id2 != -1) {
+                            if(id1 == id2) {
+                                break;
+                            } else {
+                                vector<int> tempVec;
+                                tempVec.reserve(2);
+                                // at the end of the procedure, temp(0) will equal -1 if the first intersection does not coincide with any of the
+                                // vertices of the 2D cell. otherwise, it will be equal to the id of the edge in which that intersection is
+                                // the starting point. same for temp(1).
+
+                                vector<Vector3d> solVec = {};
+                                vector<unsigned int> edges_ids_sol = {};
+                                solVec.reserve(2); // solVec will contain the coordinates of the 2 points of intersection between the trace
+                                // and the edges of the 2D cell, if they exist
+                                edges_ids_sol.reserve(2); // edges_ids_sol will contain the ids of the edges in which
+                                // the possible two intersections lie
+                                bool skip = false;
+                                vector<unsigned int> iter;
+                                iter.reserve(2);
+                                for(unsigned int k=0;k<num_edges;k++) { // iterate on every edge of that 2D cell
+
+                                    if(skip) {
+                                        skip = false;
+                                        continue;
+                                    }
+
+                                    const Vector3d P0 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][k]];
+                                    const Vector3d P1 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][(k+1)%num_edges]];
+
+                                    MatrixXd M = MatrixXd::Zero(3,2);
+                                    M.col(0) = Q0-Q1;
+                                    M.col(1) = P1-P0;
+                                    const Vector3d b = P1-Q1;
+
+                                    const Vector3d temp = (P1-P0).cross(Q1-Q0);  // check whether segments are parallel or not
+
+                                    /// GESTIRE TOLLERANZA
+                                    if(fabs(temp(0)) < tol && fabs(temp(1)) < tol && fabs(temp(2)) < tol) {
+                                        continue; // there is no intersection, segments are parallel
+                                    }
+
+                                    FullPivLU<Eigen::MatrixXd> lu_decomp(M);
+                                    const Vector2d alpha_beta = lu_decomp.solve(b);
+
+                                    const double alpha = alpha_beta(0);
+                                    const double beta = alpha_beta(1);
+                                    const Vector3d P = alpha*(Q0-Q1)+Q1; // Point of intersection between the two lines
+                                    /// GESTIRE TOLLERANZE
+
+                                    if((alpha < -tol) || (alpha > 1+tol) || (beta < -tol) || (beta >1+tol)) {
+                                        continue;
+                                    } else {
+                                        if(-tol <= beta && beta <= tol) {
+                                            // beta is basically equal to zero
+                                            // if this happens, the intersection coincides with P1
+                                            skip = true;
+                                            solVec.push_back(P1);
+                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            tempVec.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            iter.push_back((k+1)%mesh.Cell2DEdges.size());
+                                        } else if(tol < beta && beta < 1-tol) {
+                                            // intersection coincides with P
+                                            solVec.push_back(P);
+                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]);
+                                            tempVec.push_back(-1);
+                                            iter.push_back(k);
+                                        } else if(1-tol <= beta && beta <= 1+ tol) {
+                                            // beta is basically equal to 1
+                                            // if this happens, the intersection coincides with P0
+                                            solVec.push_back(P0);
+                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            tempVec.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            iter.push_back(k);
+                                        }
+                                    }
+
+                                    if(solVec.size()==2) {
+                                        break;
+                                    }
+
+                                } // chiudo il ciclo sui lati
+
+                                // we have now successfully calculated the intersection between the passing trace and the 2D
+                                // cell with Id l
+
+                                // we must now update the polygonal mesh
+
+                                if(solVec.size()!=2) {
+                                    continue; // no update
+                                }
+                                if((solVec[0]-solVec[1]).norm() < tol) {
+                                    continue;
+                                }
+
+                                cut(mesh,solVec,edges_ids_sol,tempVec,iter,l,tol);
+                            }
+
+                        }
+
+
+                    }
+
+
+                }
+
+            }
+            FractureList.FractMesh[i] = mesh;
+            //FractureList.FractMesh.push_back(mesh);
+        }
+    }
+//*********************************************************
+    void cut(PolygonalMesh &mesh, vector<Vector3d> &solVec, const vector<unsigned int> &edges_ids_sol, vector<int> &tempVec, vector<unsigned int> &iter, const unsigned int &l, const double &tol) {
+
+        if(tempVec[0]==-1 && tempVec[1]==-1) {
+            const unsigned int id_edge_first_intersection = edges_ids_sol[0];
+            const Vector3d first_intersection = solVec[0];
+
+            const unsigned int id_edge_second_intersection = edges_ids_sol[1];
+            const Vector3d second_intersection = solVec[1];
+
+            vector<Vector3d> newCell0DCoordinates = mesh.Cell0DCoordinates;
+            newCell0DCoordinates.reserve(2);
+            newCell0DCoordinates.push_back(first_intersection);
+            newCell0DCoordinates.push_back(second_intersection);
+
+
+            vector<unsigned int> IdNewVertices1 = {};
+            vector<unsigned int> IdNewVertices2 = {};
+            const unsigned int current_number_of_vertices = mesh.Cell2DVertices[l].size();
+            IdNewVertices1.reserve(current_number_of_vertices+1);
+            IdNewVertices2.reserve(current_number_of_vertices+1); // allocate memory for maximum number of vertices
+
+            vector<unsigned int> IdOldEdges = mesh.Cell2DEdges[l]; // current edges of 2D Cell with id l
+            vector<unsigned int> IdNewEdges1 = {};
+            vector<unsigned int> IdNewEdges2 = {};
+            IdNewEdges1.reserve(IdOldEdges.size()+1);
+            IdNewEdges2.reserve(IdOldEdges.size()+1);
+
+            unsigned int k1 = 0;
+            unsigned int m1 = 0;
+
+            for(unsigned int k=0;k<IdOldEdges.size();k++) {
+                if(IdOldEdges[k]==id_edge_first_intersection || IdOldEdges[k] == id_edge_second_intersection) {
+                    IdNewVertices1.push_back(mesh.Cell2DVertices[l][k]);
+                    k1 = k;
+                    break;
+                } else {
+                    IdNewEdges1.push_back(IdOldEdges[k]);
+                    IdNewVertices1.push_back(mesh.Cell2DVertices[l][k]);
+                }
+            }
+
+            IdNewEdges1.push_back(mesh.NumberCell1D);
+            IdNewEdges1.push_back(mesh.NumberCell1D+2);
+            IdNewVertices1.push_back(mesh.NumberCell0D);
+            IdNewVertices1.push_back(mesh.NumberCell0D+1);
+
+            IdNewEdges2.push_back(mesh.NumberCell1D+1);
+            IdNewVertices2.push_back(mesh.NumberCell0D);
+
+            for(unsigned int m=k1+1;m<IdOldEdges.size();m++) {
+                if(IdOldEdges[m]==id_edge_second_intersection) {
+                    IdNewVertices2.push_back(mesh.Cell2DVertices[l][m]);
+                    m1 = m;
+                    break;
+                } else {
+                    IdNewVertices2.push_back(mesh.Cell2DVertices[l][m]);
+                    IdNewEdges2.push_back(IdOldEdges[m]);
+                }
+            }
+            IdNewVertices2.push_back(mesh.NumberCell0D+1);
+            IdNewEdges2.push_back(mesh.NumberCell1D+3);
+            IdNewEdges2.push_back(mesh.NumberCell1D+2);
+            IdNewEdges1.push_back(mesh.NumberCell1D+4);
+            for(unsigned int n=m1+1;n<IdOldEdges.size();n++) {
+                IdNewVertices1.push_back(mesh.Cell2DVertices[l][n]);
+                IdNewEdges1.push_back(IdOldEdges[n]);;
+            }
+
+            IdNewVertices1.shrink_to_fit();
+            IdNewVertices2.shrink_to_fit();
+            IdNewEdges1.shrink_to_fit();
+            IdNewEdges2.shrink_to_fit();
+
+            /// BEFORE UPDATING THE MESH, CHECK WHETHER THE AREA IS LARGE ENOUGH
+
+            const double area1 = computePolygonsArea({IdNewVertices1},newCell0DCoordinates)[0];
+            const double area2 = computePolygonsArea({IdNewVertices2},newCell0DCoordinates)[0];
+
+            if(fabs(area1) <= tol || fabs(area2) <= tol) {
+                return; // NO UPDATES, NEW 2D CELL WOULD HAVE AREA APPROXIMATELY EQUAL TO ZERO
+            }
+            // else, do the updates
+
+            //update Cell0Ds
+            mesh.Cell0DId.push_back(mesh.NumberCell0D);
+            mesh.Cell0DId.push_back(mesh.NumberCell0D+1);
+            mesh.Cell0DCoordinates.push_back(first_intersection);
+            mesh.Cell0DCoordinates.push_back(second_intersection);
+
+            // update Cell1Ds
+            for(unsigned int k=0;k<5;k++) {
+                mesh.Cell1DId.push_back(mesh.NumberCell1D+k);
+            }
+            mesh.Cell1DVertices.push_back({mesh.Cell0DId[mesh.Cell2DVertices[l][iter[0]]],mesh.NumberCell0D});
+            mesh.Cell1DVertices.push_back({mesh.NumberCell0D, mesh.Cell0DId[mesh.Cell2DVertices[l][(iter[0]+1)%mesh.Cell2DVertices[l].size()]]});
+            mesh.Cell1DVertices.push_back({mesh.NumberCell0D,mesh.NumberCell0D+1});
+            mesh.Cell1DVertices.push_back({mesh.Cell0DId[mesh.Cell2DVertices[l][iter[1]]],mesh.NumberCell0D+1});
+            mesh.Cell1DVertices.push_back({mesh.NumberCell0D+1, mesh.Cell0DId[mesh.Cell2DVertices[l][(iter[1]+1)%mesh.Cell2DVertices[l].size()]]});
+
+            // update Cell2Ds
+            mesh.Cell2DId.push_back(mesh.NumberCell2D);
+
+            mesh.Cell2DVertices[l] = IdNewVertices1;
+            mesh.Cell2DVertices.push_back(IdNewVertices2);
+
+            mesh.Cell2DEdges[l] = IdNewEdges1;
+            mesh.Cell2DEdges.push_back(IdNewEdges2);
+
+            mesh.NumberCell0D += 2;
+            mesh.NumberCell1D += 5;
+            mesh.NumberCell2D += 1;
+
+        } else if(tempVec[0]!=-1 && tempVec[1]!=-1){
+
+
+            const unsigned int id_edge_first_intersection = edges_ids_sol[0];
+
+            const unsigned int id_edge_second_intersection = edges_ids_sol[1];
+
+
+            // update edges and vertices
+
+            vector<unsigned int> IdNewVertices1 = {};
+            vector<unsigned int> IdNewVertices2 = {};
+            const unsigned int current_number_of_vertices = mesh.Cell2DVertices[l].size();
+            IdNewVertices1.reserve(current_number_of_vertices-1); // allocate memory for maximum number of vertices for the new 2D cell
+            IdNewVertices2.reserve(current_number_of_vertices-1);
+
+            vector<unsigned int> IdOldEdges = mesh.Cell2DEdges[l]; // current edges of 2D Cell with id l
+            vector<unsigned int> IdNewEdges1 = {};
+            vector<unsigned int> IdNewEdges2 = {};
+            IdNewEdges1.reserve(IdOldEdges.size()-1); // allocate memory for maximum number of vertices for the new 2D cell
+            IdNewEdges2.reserve(IdOldEdges.size()-1);
+
+            unsigned int k1 = 0;
+            unsigned int m1 = 0;
+
+            for(unsigned int k=0;k<IdOldEdges.size();k++) {
+                if(IdOldEdges[k]==id_edge_first_intersection || IdOldEdges[k] == id_edge_second_intersection) {
+                    IdNewVertices1.push_back(mesh.Cell2DVertices[l][k]);
+                    IdNewVertices2.push_back(mesh.Cell2DVertices[l][k]);
+                    k1 = k;
+                    break;
+                } else {
+                    IdNewEdges1.push_back(IdOldEdges[k]);
+                    IdNewVertices1.push_back(mesh.Cell2DVertices[l][k]);
+                }
+            }
+
+            IdNewEdges1.push_back(mesh.NumberCell1D);
+
+            IdNewEdges2.push_back(k1);
+            for(unsigned int m=k1+1;m<IdOldEdges.size();m++) {
+                if(IdOldEdges[m]==id_edge_second_intersection) {
+                    IdNewVertices1.push_back(mesh.Cell2DVertices[l][m]);
+                    IdNewVertices2.push_back(mesh.Cell2DVertices[l][m]);
+                    m1 = m;
+                    break;
+                } else {
+                    IdNewEdges2.push_back(IdOldEdges[m]);
+                    IdNewVertices2.push_back(mesh.Cell2DVertices[l][m]);
+                }
+            }
+            IdNewEdges2.push_back(mesh.NumberCell1D);
+            IdNewEdges1.push_back(IdOldEdges[m1]);
+            for(unsigned int n=m1+1;n<IdOldEdges.size();n++) {
+                IdNewVertices1.push_back(mesh.Cell2DVertices[l][n]);
+                IdNewEdges1.push_back(IdOldEdges[n]);;
+            }
+
+            IdNewVertices1.shrink_to_fit();
+            IdNewVertices2.shrink_to_fit();
+            IdNewEdges1.shrink_to_fit();
+            IdNewEdges2.shrink_to_fit();
+
+            /// BEFORE UPDATING THE MESH, CHECK WHETHER THE AREA IS LARGE ENOUGH
+
+            const double area1 = computePolygonsArea({IdNewVertices1},mesh.Cell0DCoordinates)[0];
+            const double area2 = computePolygonsArea({IdNewVertices2},mesh.Cell0DCoordinates)[0];
+
+            if(fabs(area1) <= tol || fabs(area2) <= tol) {
+                return; // NO UPDATES, NEW 2D CELL WOULD HAVE AREA APPROXIMATELY EQUAL TO ZERO
+            }
+            // else, do the updates
+
+            // no updates on Cell0Ds
+
+            // update Cell1Ds
+            mesh.Cell1DId.push_back(mesh.NumberCell1D);
+            mesh.Cell1DVertices.push_back({mesh.Cell0DId[mesh.Cell2DVertices[l][iter[0]]],mesh.Cell0DId[mesh.Cell2DVertices[l][iter[1]]]});
+
+            // update Cell2Ds
+            mesh.Cell2DId.push_back(mesh.NumberCell2D);
+
+            mesh.Cell2DVertices[l] = IdNewVertices1;
+            mesh.Cell2DVertices.push_back(IdNewVertices2);
+
+            mesh.Cell2DEdges[l] = IdNewEdges1;
+            mesh.Cell2DEdges.push_back(IdNewEdges2);
+
+            mesh.NumberCell1D += 1;
+            mesh.NumberCell2D += 1;
+
+        } else if((tempVec[0]!=-1 && tempVec[1] == -1) || (tempVec[0] == -1 && tempVec[1]!=-1)) {
+            if(tempVec[0] == -1 && tempVec[1]!=-1) {
+                const vector<int> swapTempVec = tempVec;
+                tempVec[0] = swapTempVec[1];
+                tempVec[1] = swapTempVec[0];
+
+                const vector<Vector3d> swapSolVec = solVec;
+                solVec[0] = swapSolVec[1];
+                solVec[1] = swapSolVec[0];
+
+                const vector<unsigned int> swapIter = iter;
+                iter[0] = swapIter[1];
+                iter[1] = swapIter[0];
+            }
+
+            const unsigned int id_edge_first_intersection = edges_ids_sol[0];
+
+            const unsigned int id_edge_second_intersection = edges_ids_sol[1];
+            const Vector3d second_intersection = solVec[1];
+
+            vector<Vector3d> newCell0DCoordinates = mesh.Cell0DCoordinates;
+            newCell0DCoordinates.reserve(1);
+            newCell0DCoordinates.push_back(second_intersection);
+
+            vector<unsigned int> IdNewVertices1 = {};
+            vector<unsigned int> IdNewVertices2 = {};
+            const unsigned int current_number_of_vertices = mesh.Cell2DVertices[l].size();
+            IdNewVertices1.reserve(current_number_of_vertices);
+            IdNewVertices2.reserve(current_number_of_vertices); // allocate memory for maximum number of vertices
+
+            vector<unsigned int> IdOldEdges = mesh.Cell2DEdges[l]; // current edges of 2D Cell with id l
+            vector<unsigned int> IdNewEdges1 = {};
+            vector<unsigned int> IdNewEdges2 = {};
+            IdNewEdges1.reserve(IdOldEdges.size());
+            IdNewEdges2.reserve(IdOldEdges.size());
+
+            unsigned int k1 = 0;
+            unsigned int m1 = 0;
+
+            for(unsigned int k=0;k<IdOldEdges.size();k++) {
+                if(IdOldEdges[k]==id_edge_first_intersection || IdOldEdges[k] == id_edge_second_intersection) {
+                    IdNewVertices1.push_back(mesh.Cell2DVertices[l][k]);
+                    k1 = k;
+                    break;
+                } else {
+                    IdNewEdges1.push_back(IdOldEdges[k]);
+                    IdNewVertices1.push_back(mesh.Cell2DVertices[l][k]);
+                }
+            }
+
+            IdNewEdges1.push_back(mesh.NumberCell1D+2);
+            IdNewVertices1.push_back(mesh.NumberCell0D);
+
+            IdNewEdges2.push_back(IdOldEdges[k1]);
+            IdNewVertices2.push_back(mesh.Cell2DVertices[l][k1]);
+
+            for(unsigned int m=k1+1;m<IdOldEdges.size();m++) {
+                if(IdOldEdges[m]==id_edge_second_intersection) {
+                    IdNewVertices2.push_back(mesh.Cell2DVertices[l][m]);
+                    m1 = m;
+                    break;
+                } else {
+                    IdNewVertices2.push_back(mesh.Cell2DVertices[l][m]);
+                    IdNewEdges2.push_back(IdOldEdges[m]);
+                }
+            }
+            IdNewVertices2.push_back(mesh.NumberCell0D);
+            IdNewEdges2.push_back(mesh.NumberCell1D);
+            IdNewEdges2.push_back(mesh.NumberCell1D+2);
+            IdNewEdges1.push_back(mesh.NumberCell1D+1);
+            for(unsigned int n=m1+1;n<IdOldEdges.size();n++) {
+                IdNewVertices1.push_back(mesh.Cell2DVertices[l][n]);
+                IdNewEdges1.push_back(IdOldEdges[n]);;
+            }
+
+            IdNewVertices1.shrink_to_fit();
+            IdNewVertices2.shrink_to_fit();
+            IdNewEdges1.shrink_to_fit();
+            IdNewEdges2.shrink_to_fit();
+
+            /// BEFORE UPDATING THE MESH, CHECK WHETHER THE AREA IS LARGE ENOUGH
+
+            const double area1 = computePolygonsArea({IdNewVertices1},newCell0DCoordinates)[0];
+            const double area2 = computePolygonsArea({IdNewVertices2},newCell0DCoordinates)[0];
+
+            if(fabs(area1) <= tol || fabs(area2) <= tol) {
+                return; // NO UPDATES, NEW 2D CELL WOULD HAVE AREA APPROXIMATELY EQUAL TO ZERO
+            }
+            // else, do the updates
+
+            //update Cell0Ds
+            mesh.Cell0DId.push_back(mesh.NumberCell0D);
+            mesh.Cell0DCoordinates.push_back(second_intersection);
+
+            // update Cell1Ds
+            for(unsigned int k=0;k<3;k++) {
+                mesh.Cell1DId.push_back(mesh.NumberCell1D+k);
+            }
+            mesh.Cell1DVertices.push_back({mesh.Cell0DId[mesh.Cell2DVertices[l][iter[1]]],mesh.NumberCell0D});
+            mesh.Cell1DVertices.push_back({mesh.NumberCell0D, mesh.Cell0DId[mesh.Cell2DVertices[l][(iter[1]+1)%mesh.Cell2DVertices[l].size()]]});
+            mesh.Cell1DVertices.push_back({mesh.NumberCell0D,mesh.Cell0DId[mesh.Cell2DVertices[l][iter[0]]]});
+
+            // update Cell2Ds
+            mesh.Cell2DId.push_back(mesh.NumberCell2D);
+
+            mesh.Cell2DVertices[l] = IdNewVertices1;
+            mesh.Cell2DVertices.push_back(IdNewVertices2);
+
+            mesh.Cell2DEdges[l] = IdNewEdges1;
+            mesh.Cell2DEdges.push_back(IdNewEdges2);
+
+            mesh.NumberCell0D += 1;
+            mesh.NumberCell1D += 3;
+            mesh.NumberCell2D += 1;
+        }
+    }
+//*********************************************************
     void exportParaview(const string &outputFileName, const Fractures& FractureList) {
         Gedim::UCDUtilities exporter;
         vector<vector<unsigned int>> quadrilaterals;
@@ -467,5 +1479,27 @@ namespace DFNLibrary {
                                 {},
                                 materials);
     }
+//*********************************************************
+    void exportFractureMesh(const string& outputFileName, const Fractures& FractureList, const unsigned int& fractureID) {
+        PolygonalMesh mesh = FractureList.FractMesh[fractureID];
+        Gedim::UCDUtilities exporter;
+        vector<vector<unsigned int>> triangles;
+        VectorXi materials;
+        FractMeshGedimInterface(mesh.Cell2DVertices, triangles, materials);
+        const unsigned int numPoints = mesh.Cell0DCoordinates.size();
+        MatrixXd CoordinatesMatrix = MatrixXd(3,numPoints);
+        for(unsigned int i=0; i<numPoints;i++) {
+            CoordinatesMatrix.col(i) = mesh.Cell0DCoordinates[i];
+        }
+
+        exporter.ExportPolygons(outputFileName,
+                                CoordinatesMatrix,
+                                triangles,
+                                {},
+                                {},
+                                materials);
+
+    }
+//*********************************************************
 }
 
