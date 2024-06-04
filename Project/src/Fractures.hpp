@@ -174,6 +174,16 @@ void cut(PolygonalMesh& mesh, vector<Vector3d>& solVec, const vector<unsigned in
 ///
 void exportFractureMesh(const string& outputFileName, const Fractures& FractureList, const unsigned int& fractureID);
 //*********************************************************
+///
+/// \brief printFractureMesh: exports to 3 .csv files the 0D, 1D and 2D cells of the polygonal mesh computed using computePolygonalMesh
+/// \param FractureList: a Fractures struct
+/// \param outputFileName1: name of file that will contain the information about the 0D cells
+/// \param outputFileName2: name of file that will contain the information about the 1D cells
+/// \param outputFileName3: name of file that will contain the information about the 2D cells
+/// \return true if the operation was successful, false otherwise
+///
+bool printFractureMesh(const string &outputFileName1, const string &outputFileName2, const string &outputFileName3, const Fractures &FractureList);
+//*********************************************************
 }
 
 

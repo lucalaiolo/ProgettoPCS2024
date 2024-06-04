@@ -6,6 +6,7 @@
 #include "Eigen/Eigen"
 #include <fstream>
 #include <iomanip>
+#include "fstream"
 using namespace std;
 using namespace Eigen;
 using namespace SortingLibrary;
@@ -1499,6 +1500,59 @@ namespace DFNLibrary {
                                 {},
                                 materials);
 
+    }
+//*********************************************************
+    bool printFractureMesh(const string &outputFileName1, const string &outputFileName2, const string &outputFileName3, const Fractures &FractureList) {
+        ofstream file1;
+        file1.open(outputFileName1);
+        if(file1.fail()) {
+            cerr << "Something went wrong opening output file." << endl;
+            return false;
+        }
+        ofstream file2;
+        file2.open(outputFileName2);
+        if(file2.fail()) {
+            cerr << "Something went wrong opening output file." << endl;
+            return false;
+        }
+        ofstream file3;
+        file3.open(outputFileName3);
+        if(file3.fail()) {
+            cerr << "Something went wrong opening output file." << endl;
+            return false;
+        }
+        const unsigned int num_fractures = FractureList.FractMeanPoint.size();
+        for(unsigned int i=0; i<num_fractures;i++) {
+            file1 << "Fracture id;" << i << ";Number Cell0Ds;" << FractureList.FractMesh[i].NumberCell0D << ";" << endl;
+            file1 << "Id;X;Y;Z;" << endl;
+            for(unsigned int j=0;j<FractureList.FractMesh[i].NumberCell0D;j++) {
+                file1 << j <<";" << scientific << setprecision(16) << FractureList.FractMesh[i].Cell0DCoordinates[j](0) <<";" << FractureList.FractMesh[i].Cell0DCoordinates[j](1) <<";" << FractureList.FractMesh[i].Cell0DCoordinates[j](2) <<";" << endl;
+            }
+            file1 << endl;
+
+            file2 << "Fracture id;" << i << ";Number Cell1Ds;" << FractureList.FractMesh[i].NumberCell1D << ";" << endl;
+            file2 << "Id;Origin;End;" << endl;
+            for(unsigned int j=0;j<FractureList.FractMesh[i].NumberCell1D;j++) {
+                file2 << j <<";" << FractureList.FractMesh[i].Cell1DVertices[j](0) << ";" << FractureList.FractMesh[i].Cell1DVertices[j](1) << ";" << endl;
+            }
+            file2 << endl;
+
+            file3 << "Fracture id;" << i << ";Number Cell2Ds;" << FractureList.FractMesh[i].NumberCell2D << ";" << endl;
+            file3 << "Id;NumVertices;Vertices;NumEdges;Edges;" << endl;
+            for(unsigned int j=0; j<FractureList.FractMesh[i].NumberCell2D;j++) {
+                file3 << j <<";" << FractureList.FractMesh[i].Cell2DVertices[j].size() << ";";
+                for(unsigned int k=0;k<FractureList.FractMesh[i].Cell2DVertices[j].size();k++) {
+                    file3 << FractureList.FractMesh[i].Cell2DVertices[j][k] << ";";
+                }
+                file3 << FractureList.FractMesh[i].Cell2DEdges[j].size() << ";";
+                for(unsigned int k=0;k<FractureList.FractMesh[i].Cell2DEdges[j].size();k++) {
+                    file3 << FractureList.FractMesh[i].Cell2DEdges[j][k] << ";";
+                }
+                file3 << endl;
+            }
+            file3 << endl;
+        }
+        return true;
     }
 //*********************************************************
 }
