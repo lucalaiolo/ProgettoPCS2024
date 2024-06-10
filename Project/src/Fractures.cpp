@@ -74,8 +74,6 @@ namespace DFNLibrary {
             const double d = n.dot(FractureList.FractVertices[i].col(0));
             Plane FractPlane(n,d);
             FractureList.FractPlanes[i] = (FractPlane);
-            FractureList.listTraces[i][true].reserve(numFractures/3);
-            FractureList.listTraces[i][false].reserve(numFractures/3);
         }
         inputFile.close();
         return true;
@@ -85,6 +83,14 @@ namespace DFNLibrary {
 
         const unsigned int numFractures = FractureList.FractVertices.size();
         unsigned int count = 0; // variable that will tell us the id of the computed trace
+        vector<list<unsigned int>> tempTipsTracesList;
+        vector<list<unsigned int>> tempNonTipsTracesList;
+        list<array<unsigned int,2>> tempTraceIDFractures;
+        list<MatrixXd> tempTraceCoordinates;
+
+        tempTipsTracesList.resize(numFractures);
+        tempNonTipsTracesList.resize(numFractures);
+
         for(unsigned int i=0;i<numFractures;i++) {
             for(unsigned int j=i+1;j<numFractures;j++){ // intersection is commutative
 
@@ -231,7 +237,7 @@ namespace DFNLibrary {
                 if(n==0) {
                     //cout << "Trace is A_B. False for both." << endl;
                     array<bool,2> tips = {false,false};
-                    executeCase(count,i,j,0,1,A_B_C_D,tips,FractureList,TracesList);
+                    executeCase(count,i,j,0,1,A_B_C_D,tips, tempTipsTracesList, tempNonTipsTracesList, tempTraceIDFractures, tempTraceCoordinates);
                     continue;
                 } else if(n == 1 || n == 5) {
                     //cout << "No trace" << endl;
@@ -239,37 +245,56 @@ namespace DFNLibrary {
                 } else if(n==-1 || n==2) {
                     //cout << "Trace is A_B. False F1. True F2." << endl;
                     array<bool,2> tips = {false,true};
-                    executeCase(count,i,j,0,1,A_B_C_D,tips,FractureList,TracesList);
+                    executeCase(count,i,j,0,1,A_B_C_D,tips,tempTipsTracesList, tempNonTipsTracesList, tempTraceIDFractures, tempTraceCoordinates);
                     continue;
                 } else if(n==3) {
                     //cout << "Case 3. Trace is CB. True both." << endl;
                     array<bool,2> tips = {true,true};
-                    executeCase(count,i,j,2,1,A_B_C_D,tips,FractureList,TracesList);
+                    executeCase(count,i,j,2,1,A_B_C_D,tips,tempTipsTracesList, tempNonTipsTracesList, tempTraceIDFractures, tempTraceCoordinates);
                     continue;
                 } else if(n==4) {
                     //cout << "Case 4. Trace is AD. True both." << endl;
                     array<bool,2> tips = {true,true};
-                    executeCase(count,i,j,0,3,A_B_C_D,tips,FractureList,TracesList);
+                    executeCase(count,i,j,0,3,A_B_C_D,tips,tempTipsTracesList, tempNonTipsTracesList, tempTraceIDFractures, tempTraceCoordinates);
                     continue;
                 } else if(n==6 || n==-2 || n==-3) {
                     //cout << "Case 6. Trace is CD. F1 true. F2 false." << endl;
                     array<bool,2> tips = {true,false};
-                    executeCase(count,i,j,2,3,A_B_C_D,tips,FractureList,TracesList);
+                    executeCase(count,i,j,2,3,A_B_C_D,tips,tempTipsTracesList, tempNonTipsTracesList, tempTraceIDFractures, tempTraceCoordinates);
                     continue;
                 } else if(n==-4) {
                     //cout << "Case 7.2" << endl;
                     //cout << "Trace is AD. false F1. true F2" << endl;
                     array<bool,2> tips = {false,true};
-                    executeCase(count,i,j,0,3,A_B_C_D,tips,FractureList,TracesList);
+                    executeCase(count,i,j,0,3,A_B_C_D,tips,tempTipsTracesList, tempNonTipsTracesList, tempTraceIDFractures, tempTraceCoordinates);
                     continue;
                 }
 
             }
         }
-        for(unsigned int i=0;i<numFractures;i++){
-            FractureList.listTraces[i][true].shrink_to_fit();
-            FractureList.listTraces[i][false].shrink_to_fit();
+        for(unsigned int i=0;i<numFractures;i++) {
+            const unsigned int numTipsTraces = tempTipsTracesList[i].size();
+            const unsigned int numNonTipsTraces = tempNonTipsTracesList[i].size();
+            FractureList.listTraces[i][true].reserve(numTipsTraces);
+            FractureList.listTraces[i][false].reserve(numNonTipsTraces);
+            for(auto& traceid : tempTipsTracesList[i]) {
+                FractureList.listTraces[i][false].push_back(traceid);
+            }
+            for(auto& traceid : tempNonTipsTracesList[i]) {
+                FractureList.listTraces[i][true].push_back(traceid);
+            }
         }
+
+        const unsigned int numTraces = tempTraceIDFractures.size();
+        TracesList.TraceCoordinates.reserve(numTraces);
+        TracesList.TraceIDFractures.reserve(numTraces);
+        for(auto& ids:tempTraceIDFractures) {
+            TracesList.TraceIDFractures.push_back(ids);
+        }
+        for(auto& coord:tempTraceCoordinates) {
+            TracesList.TraceCoordinates.push_back(coord);
+        }
+
         computeTracesSquaredLength(TracesList);
         exportTraces("Traces.txt", TracesList);
         exportFractures("Fractures.txt", FractureList, TracesList);
@@ -284,22 +309,27 @@ namespace DFNLibrary {
         return dist;
     }
 //*********************************************************
-    inline void executeCase(unsigned int &count, const unsigned int &i, const unsigned int &j,
-                            const unsigned int &pos1, const unsigned int &pos2, const vector<Vector3d> &A_B_C_D,
-                            const array<bool, 2> &tips, Fractures &FractureList, Traces &TracesList) {
+    inline void executeCase(unsigned int& count, const unsigned int& i, const unsigned int& j, const unsigned int& pos1, const unsigned int& pos2,
+                            const vector<Vector3d>& A_B_C_D,const array<bool,2>& tips, vector<list<unsigned int>> &tempTipsTracesList,
+                            vector<list<unsigned int>> &tempNonTipsTracesList, list<array<unsigned int,2>> &tempTraceIDFractures,
+                            list<MatrixXd> &tempTraceCoordinates) {
         MatrixXd trace_coord = MatrixXd::Zero(3,2);
         trace_coord.col(0) = A_B_C_D[pos1];
         trace_coord.col(1) = A_B_C_D[pos2];
 
-        auto ret1 = FractureList.listTraces[i].insert({tips[0], {count}});
-        if(!ret1.second)
-            (*(ret1.first)).second.push_back(count);
-        auto ret2 = FractureList.listTraces[j].insert({tips[1], {count}});
-        if(!ret2.second)
-            (*(ret2.first)).second.push_back(count);
+        if(tips[0]==true) {
+            tempNonTipsTracesList[i].push_back(count);
+        } else {
+            tempTipsTracesList[i].push_back(count);
+        }
+        if(tips[1]==true) {
+            tempNonTipsTracesList[j].push_back(count);
+        } else {
+            tempTipsTracesList[j].push_back(count);
+        }
         array<unsigned int,2> trace_id = {i,j};
-        TracesList.TraceIDFractures.push_back(trace_id);
-        TracesList.TraceCoordinates.push_back(trace_coord);
+        tempTraceIDFractures.push_back(trace_id);
+        tempTraceCoordinates.push_back(trace_coord);
         count++;
     }
 //*********************************************************
@@ -540,9 +570,9 @@ namespace DFNLibrary {
 
                         vector<int> tempVec;
                         tempVec.reserve(2);
-                        // at the end of the procedure, temp(0) will equal -1 if the first intersection does not coincide with any of the
+                        // at the end of the procedure, tempVec(0) will equal -1 if the first intersection does not coincide with any of the
                         // vertices of the 2D cell. otherwise, it will be equal to the id of the edge in which that intersection is
-                        // the starting point. same for temp(1).
+                        // the starting point. same for tempVec(1).
 
 
                         vector<Vector3d> solVec = {};
@@ -677,20 +707,61 @@ namespace DFNLibrary {
                         for(unsigned int k=0;k<num_edges;k++) {
                             const Vector3d P0 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][k]];
                             const Vector3d P1 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][(k+1)%num_edges]];
-                            const double edge_length = sqrt(computeSquaredDistancePoints(P0,P1));
-                            if(id1==-1) {
-                                const double lengthQ0P0 = sqrt(computeSquaredDistancePoints(Q0,P0));
-                                const double lengthQ0P1 = sqrt(computeSquaredDistancePoints(Q0,P1));
-                                if(fabs(edge_length-lengthQ0P0-lengthQ0P1)<=tol) {
-                                    id1 = k;
+                            double alpha0 = 0.0;
+                            double alpha1 = 0.0;
+                            if(fabs((P0-P1)(0))>tol) {
+                                if(id1==-1) {
+                                    alpha0 = (Q0-P1)(0)/(P0-P1)(0);
+                                    const double res1 = fabs(Q0(1)-P1(1)-alpha0*(P0(1)-P1(1)));
+                                    const double res2 = fabs(Q0(2)-P1(2)-alpha0*(P0(2)-P1(2)));
+                                    if(-tol <= alpha0 && alpha0 <= 1+tol && res1<=tol && res2<=tol ) {
+                                        id1 = k;
+                                    }
                                 }
-                            }
-                            if(id2==-1) {
-                                const double lengthQ1P0 = sqrt(computeSquaredDistancePoints(Q1,P0));
-                                const double lengthQ1P1 = sqrt(computeSquaredDistancePoints(Q1,P1));
-                                if(fabs(edge_length-lengthQ1P0-lengthQ1P1)<=tol) {
-                                    id2 = k;
+                                if(id2 == -1) {
+                                    alpha1 = (Q1-P1)(0)/(P0-P1)(0);
+                                    const double res1 = fabs(Q1(1)-P1(1)-alpha1*(P0(1)-P1(1)));
+                                    const double res2 = fabs(Q1(2)-P1(2)-alpha1*(P0(2)-P1(2)));
+                                    if(-tol <= alpha1 && alpha1 <= 1+tol && res1<=tol && res2<=tol ) {
+                                        id2 = k;
+                                    }
                                 }
+                            } else if(fabs((P0-P1)(1))>tol) {
+                                if(id1==-1) {
+                                    alpha0 = (Q0-P1)(1)/(P0-P1)(1);
+                                    const double res1 = fabs(Q0(0)-P1(0)-alpha0*(P0(0)-P1(0)));
+                                    const double res2 = fabs(Q0(2)-P1(2)-alpha0*(P0(2)-P1(2)));
+                                    if(-tol <= alpha0 && alpha0 <= 1+tol && res1<=tol && res2<=tol ) {
+                                        id1 = k;
+                                    }
+                                }
+                                if(id2 == -1) {
+                                    alpha1 = (Q1-P1)(1)/(P0-P1)(1);
+                                    const double res1 = fabs(Q1(0)-P1(0)-alpha1*(P0(0)-P1(0)));
+                                    const double res2 = fabs(Q1(2)-P1(2)-alpha1*(P0(2)-P1(2)));
+                                    if(-tol <= alpha1 && alpha1 <= 1+tol && res1<=tol && res2<=tol ) {
+                                        id2 = k;
+                                    }
+                                }
+                            } else if(fabs((P0-P1)(2))>tol) {
+                                if(id1==-1) {
+                                    alpha0 = (Q0-P1)(2)/(P0-P1)(2);
+                                    const double res1 = fabs(Q0(0)-P1(0)-alpha0*(P0(0)-P1(0)));
+                                    const double res2 = fabs(Q0(1)-P1(1)-alpha0*(P0(1)-P1(1)));
+                                    if(-tol <= alpha0 && alpha0 <= 1+tol && res1<=tol && res2<=tol ) {
+                                        id1 = k;
+                                    }
+                                }
+                                if(id2 == -1) {
+                                    alpha1 = (Q1-P1)(2)/(P0-P1)(2);
+                                    const double res1 = fabs(Q1(0)-P1(0)-alpha1*(P0(0)-P1(0)));
+                                    const double res2 = fabs(Q1(1)-P1(1)-alpha1*(P0(1)-P1(1)));
+                                    if(-tol <= alpha1 && alpha1 <= 1+tol && res1<=tol && res2<=tol ) {
+                                        id2 = k;
+                                    }
+                                }
+                            } else {
+                                cout << "Something went wrong.";
                             }
                             if(id1!=-1 && id2!=-1) {
                                 break;

@@ -112,11 +112,15 @@ int findCase(const vector<double>& betas, const double &tol);
 /// the edges of the j-th fracture.
 /// \param tips: tips[0] is true if one of the end points of the trace do not belong to the edges of the i-th fracture, false otherwise.
 /// tips[1]  is true if one of the end points of the trace do not belong to the edges of the j-th fracture, false otherwise.
-/// \param FractureList: a Fractures struct
-/// \param TracesList: a Traces struct
+/// \param tempTipsTracesList: temporary object that will contain, for every fracture, the ids of the traces of that fracture such that both their end points belong to the edges
+/// \param tempNonTipsTracesList: temporary object that will contain, for every fracture, the ids of the traces of that fracture such that one of their end points do not belong to the edges
+/// \param tempTraceIDFractures: temporary object that will contain, for every trace, the ids of the fractures whose intersection corresponds to that trace
+/// \param tempTraceCoordinates: temporary object that will contain, for every trace, the coordinates of the end points of that trace
 ///
 inline void executeCase(unsigned int& count, const unsigned int& i, const unsigned int& j, const unsigned int& pos1, const unsigned int& pos2,
-                        const vector<Vector3d>& A_B_C_D,const array<bool,2>& tips, Fractures& FractureList, Traces& TracesList);
+                        const vector<Vector3d>& A_B_C_D,const array<bool,2>& tips, vector<list<unsigned int>> &tempTipsTracesList,
+                        vector<list<unsigned int>> &tempNonTipsTracesList, list<array<unsigned int,2>> &tempTraceIDFractures,
+                        list<MatrixXd> &tempTraceCoordinates);
 //*********************************************************
 ///
 /// \brief printTraces: exports the list of traces computed
