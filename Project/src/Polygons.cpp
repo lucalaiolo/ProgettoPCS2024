@@ -87,6 +87,7 @@ namespace GeometryLibrary {
         for(unsigned int i=0;i<num_vertices;i++) {
             meanPoint += VerticesCoordinates[VerticesIDs[i]];
         }
+        meanPoint = meanPoint/num_vertices;
         Vector3d n = (VerticesCoordinates[VerticesIDs[1]]-VerticesCoordinates[VerticesIDs[0]]).cross(PlaneNormal);
         if((meanPoint-VerticesCoordinates[VerticesIDs[0]]).dot(n)<-tol) {
             PlaneNormal = -PlaneNormal;

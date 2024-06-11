@@ -1410,20 +1410,7 @@ namespace DFNLibrary {
             mesh.NumberCell1D += 1;
             mesh.NumberCell2D += 1;
 
-        } else if((tempVec[0]!=-1 && tempVec[1] == -1) || (tempVec[0] == -1 && tempVec[1]!=-1)) {
-            if(tempVec[0] == -1 && tempVec[1]!=-1) {
-                const vector<int> swapTempVec = tempVec;
-                tempVec[0] = swapTempVec[1];
-                tempVec[1] = swapTempVec[0];
-
-                const vector<Vector3d> swapSolVec = solVec;
-                solVec[0] = swapSolVec[1];
-                solVec[1] = swapSolVec[0];
-
-                const vector<unsigned int> swapIter = iter;
-                iter[0] = swapIter[1];
-                iter[1] = swapIter[0];
-            }
+        } else if((tempVec[0]!=-1 && tempVec[1] == -1)) {
 
             const unsigned int id_edge_first_intersection = edges_ids_sol[0];
 
@@ -1524,6 +1511,110 @@ namespace DFNLibrary {
             mesh.NumberCell0D += 1;
             mesh.NumberCell1D += 3;
             mesh.NumberCell2D += 1;
+
+        } else if(tempVec[0]==-1 && tempVec[1]!=-1) {
+
+            const unsigned int id_edge_first_intersection = edges_ids_sol[0];
+
+            const unsigned int id_edge_second_intersection = edges_ids_sol[1];
+            const Vector3d first_intersection = solVec[0];
+
+            vector<Vector3d> newCell0DCoordinates = mesh.Cell0DCoordinates;
+            newCell0DCoordinates.reserve(1);
+            newCell0DCoordinates.push_back(first_intersection);
+
+            vector<unsigned int> IdNewVertices1 = {};
+            vector<unsigned int> IdNewVertices2 = {};
+            const unsigned int current_number_of_vertices = mesh.Cell2DVertices[l].size();
+            IdNewVertices1.reserve(current_number_of_vertices);
+            IdNewVertices2.reserve(current_number_of_vertices); // allocate memory for maximum number of vertices
+
+            vector<unsigned int> IdOldEdges = mesh.Cell2DEdges[l]; // current edges of 2D Cell with id l
+            vector<unsigned int> IdNewEdges1 = {};
+            vector<unsigned int> IdNewEdges2 = {};
+            IdNewEdges1.reserve(IdOldEdges.size());
+            IdNewEdges2.reserve(IdOldEdges.size());
+
+            unsigned int k1 = 0;
+            unsigned int m1 = 0;
+
+            for(unsigned int k=0;k<IdOldEdges.size();k++) {
+                if(IdOldEdges[k]==id_edge_first_intersection) {
+                    IdNewVertices1.push_back(mesh.Cell2DVertices[l][k]);
+                    k1 = k;
+                    break;
+                } else {
+                    IdNewEdges1.push_back(IdOldEdges[k]);
+                    IdNewVertices1.push_back(mesh.Cell2DVertices[l][k]);
+                }
+            }
+
+            IdNewEdges1.push_back(mesh.NumberCell1D);
+            IdNewEdges1.push_back(mesh.NumberCell1D+2);
+            IdNewVertices1.push_back(mesh.NumberCell0D);
+
+            IdNewVertices2.push_back(mesh.NumberCell0D);
+            IdNewEdges2.push_back(mesh.NumberCell1D+1);
+
+            for(unsigned int m=k1+1;m<IdOldEdges.size();m++) {
+                if(IdOldEdges[m]==id_edge_second_intersection) {
+                    IdNewVertices2.push_back(mesh.Cell2DVertices[l][m]);
+                    m1 = m;
+                    break;
+                } else {
+                    IdNewVertices2.push_back(mesh.Cell2DVertices[l][m]);
+                    IdNewEdges2.push_back(IdOldEdges[m]);
+                }
+            }
+            IdNewEdges2.push_back(mesh.NumberCell1D+2);
+            IdNewEdges1.push_back(IdOldEdges[m1]);
+            IdNewVertices1.push_back(mesh.Cell2DVertices[l][m1]);
+            for(unsigned int n=m1+1;n<IdOldEdges.size();n++) {
+                IdNewVertices1.push_back(mesh.Cell2DVertices[l][n]);
+                IdNewEdges1.push_back(IdOldEdges[n]);;
+            }
+
+            IdNewVertices1.shrink_to_fit();
+            IdNewVertices2.shrink_to_fit();
+            IdNewEdges1.shrink_to_fit();
+            IdNewEdges2.shrink_to_fit();
+
+            /// BEFORE UPDATING THE MESH, CHECK WHETHER THE AREA IS LARGE ENOUGH
+
+            const double area1 = computePolygonsArea({IdNewVertices1},newCell0DCoordinates)[0];
+            const double area2 = computePolygonsArea({IdNewVertices2},newCell0DCoordinates)[0];
+
+            if(fabs(area1) <= tol || fabs(area2) <= tol) {
+                return; // NO UPDATES, NEW 2D CELL WOULD HAVE AREA APPROXIMATELY EQUAL TO ZERO
+            }
+            // else, do the updates
+
+            //update Cell0Ds
+            mesh.Cell0DId.push_back(mesh.NumberCell0D);
+            mesh.Cell0DCoordinates.push_back(first_intersection);
+
+            // update Cell1Ds
+            for(unsigned int k=0;k<3;k++) {
+                mesh.Cell1DId.push_back(mesh.NumberCell1D+k);
+            }
+            mesh.Cell1DVertices.push_back({mesh.Cell0DId[mesh.Cell2DVertices[l][iter[1]]],mesh.NumberCell0D});
+            mesh.Cell1DVertices.push_back({mesh.NumberCell0D, mesh.Cell0DId[mesh.Cell2DVertices[l][(iter[1]+1)%mesh.Cell2DVertices[l].size()]]});
+            mesh.Cell1DVertices.push_back({mesh.NumberCell0D,mesh.Cell0DId[mesh.Cell2DVertices[l][iter[0]]]});
+
+            // update Cell2Ds
+            mesh.Cell2DId.push_back(mesh.NumberCell2D);
+
+            mesh.Cell2DVertices[l] = IdNewVertices1;
+            mesh.Cell2DVertices.push_back(IdNewVertices2);
+
+            mesh.Cell2DEdges[l] = IdNewEdges1;
+            mesh.Cell2DEdges.push_back(IdNewEdges2);
+
+            mesh.NumberCell0D += 1;
+            mesh.NumberCell1D += 3;
+            mesh.NumberCell2D += 1;
+
+
         }
     }
 //*********************************************************
