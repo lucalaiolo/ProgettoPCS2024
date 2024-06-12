@@ -1,63 +1,73 @@
-' Ogni codice UML inizia e termina con staruml - enduml
-@startuml 
+@startuml
 
-title Compute polygon area
+title Documentazione UML
+'top to bottom direction
+left to right direction
 
-' Create package with folder style
 package GeometryLibrary <<Folder>>
 {
-
-class Polygon{
-' Visibility NameVaribale : Type
-+ VerticesCoordinates : MatrixXd
-+ listVertices : std::vector<std::vector<unsigned int>>
-+ Polygon()
-+ Polygon(VerticesCoordinates, listVertices)
-+ void GedimInterface(vector<vector<unsigned int>>& triangles,
-                        \t \t \t  \t \t VectorXi& materials)
-+ vector<double> computePolygonsArea()
-+ vector<vector<vector<unsigned int>>> TriangulatePolygons()
-.. Non member function ..
-
-void importPolygonsList(const string& filepath,
-\t \t \t                    Polygons& polygons)
-
-.. TESTPOLYGON ..
-
-TestComputePolygonsArea
-TestGedimInterface
-}
-
-
 class Triangle{
 + Vertices : Matrix3d
 + Triangle(Vertices : Matrix3d)
 + double ComputeArea()
-.. TESTTRIANGLE ..
-TestComputeArea
 }
 
-' Modeling relationship: https://blog.visual-paradigm.com/what-are-the-six-types-of-relationships-in-uml-class-diagrams/#:~:text=There%20are%20six%20main%20types,aggregation%20%2C%20association%2C%20and%20dependency%20.
+class Plane{
++ Normal : Vector3d
++ d: double
++ Plane()
++ Plane(Normal, d)
+}
 
+class PolygonalMesh{
++ NumberCell0D: unsigned int
++ Cell0ID: vector<unsigned int>
++ Cell0DCoordinates: vector<Vector3d>
++ NumberCell1D: unsigned int
++ Cell1DId: vector<unsigned int>
++ Cell1DVertices: vector<Vector2i>
++ NumberCell2D: unsigned int
++ Cell2DId: vector<unsigned int>
++ Cell2DVertices: vector<vector<unsigned int>>
++ Cell2DEdges: vector<vector<unsigned int>>
+}
+
+}
+
+DFNLibrary --> GeometryLibrary : uses 
 ' Left, right, up, down to try to orient classes in the space based on their relationship
 
-' Aggregazione
-Polygon "1" o-left- "many" Triangle : is made up of
-
-}
-
-
-package Gedim <<Frame>>
+package DFNLibrary <<Folder>>
 {
+class Traces{
++ TraceIDFractures : vector<array<unsigned int,2>>
++ TraceCoordinates: vector<MatrixXd>
++ TraceLength: vector<double>
+.. Non member function ..
+void computeTraces(Fractures, Traces, double)
+void computePolygonalMesh(Fractures, Traces, double)
+void computeTracesSquaredLength(Traces)
+void exportTraces(Traces)
+}
 
+class Fractures{
++ FractVertices: vector<MatrixXd>
++ listTraces: vector<map<bool,vector<unsigned int>>>
++ FractPlanes: vector<Plane>
++ FractMeanPoint: vector<Vector3d>
++ FractMesh: vector<PolygonalMesh>
+.. Non member function ..
+bool importFractureList(string, Fractures)
+void computeTraces(Fractures, Traces, double)
+void computePolygonalMesh(Fractures, Traces, double)
+bool printFractureMesh(string, Fractures);
+void cut(PolygonalMesh, vector<Vector3d>, vector<unsigned int>, vector<int>, vector<unsigned int>, int, double);
+void exportFunctions(string, Fractures)
+.. TESTFRACTURES ..
+TestMesh
+TestImportAndCompute
 }
 
 
-' PlotPolygon relies upon Gedim
-Polygon::GedimInterface --right--> Gedim
-
-' Add notes and link it with an object thourgh the sumbol ..
-note "This is an external package" as GedimNote
-GedimNote .. Gedim
-
+}
 @enduml
