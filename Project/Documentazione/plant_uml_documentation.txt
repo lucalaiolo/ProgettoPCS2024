@@ -61,7 +61,7 @@ bool importFractureList(string, Fractures)
 void computeTraces(Fractures, Traces, double)
 void computePolygonalMesh(Fractures, Traces, double)
 bool printFractureMesh(string, Fractures);
-void cut(PolygonalMesh, vector<Vector3d>, vector<unsigned int>, vector<int>, vector<unsigned int>, int, double);
+void cut(PolygonalMesh, vector<Vector3d>, vector<unsigned int>, vector<int>, vector<unsigned int>, int, double, bool);
 void exportFunctions(string, Fractures)
 .. TESTFRACTURES ..
 TestMesh

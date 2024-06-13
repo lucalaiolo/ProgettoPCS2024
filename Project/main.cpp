@@ -6,7 +6,7 @@ using namespace std;
 using namespace DFNLibrary;
 int main()
 {
-    const double tol = 1e-13;
+    const double tol = 1e-12;
     Fractures F;
     Traces T;
     importFractureList("./DFN/FR200_data.txt", F);

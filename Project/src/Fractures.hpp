@@ -63,14 +63,6 @@ bool importFractureList(const string& filepath, Fractures& FractureList);
 void computeTraces(Fractures &FractureList, Traces &TracesList, const double &tol);
 //*********************************************************
 ///
-/// \brief computeSquaredDistancePoints: computes the squared distance between two given points in R^3
-/// \param Point1
-/// \param Point2
-/// \return squared distance between Point1 and Point2
-///
-inline double computeSquaredDistancePoints(const Vector3d& Point1, const Vector3d& Point2);
-//*********************************************************
-///
 /// \brief checkIntersectionPossibility: check if there is any possibility that two fractures will intersect.
 /// Using the coordinates of the vertices of the fractures, we calculate the mean points of the two fractures.
 /// If we define rho_i as the maximum distance between the vertices of the i-th fracture and its mean point,
@@ -167,8 +159,9 @@ void computePolygonalMesh(Fractures& FractureList, const Traces& TracesList, con
 /// iter[0] indicates the iteration at which we found the intersection solVec[0]. same for iter[1]
 /// \param l: id of the polygon considered
 /// \param tol: tolerance for comparisons between doubles
+/// \param tips: true if one of the end points of the trace do not belong to the edges of the fracture considered, false otherwise
 ///
-void cut(PolygonalMesh& mesh, vector<Vector3d>& solVec, const vector<unsigned int>& edges_ids_sol, vector<int>& tempVec, vector<unsigned int>& iter, const unsigned int &l, const double &tol);
+void cut(PolygonalMesh& mesh, vector<Vector3d>& solVec, const vector<unsigned int>& edges_ids_sol, vector<int>& tempVec, vector<unsigned int>& iter, const unsigned int &l, const double &tol, const bool &tips);
 //*********************************************************
 ///
 /// \brief exportFractureMesh: produces an ouput file readable by paraview. using that, it's possible to visualize the polygonal mesh of a certain fracture obtained using computePolygonalMesh

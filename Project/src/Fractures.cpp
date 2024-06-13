@@ -248,22 +248,21 @@ namespace DFNLibrary {
                     executeCase(count,i,j,0,1,A_B_C_D,tips,tempTipsTracesList, tempNonTipsTracesList, tempTraceIDFractures, tempTraceCoordinates);
                     continue;
                 } else if(n==3) {
-                    //cout << "Case 3. Trace is CB. True both." << endl;
+                    //cout << Trace is CB. True both." << endl;
                     array<bool,2> tips = {true,true};
                     executeCase(count,i,j,2,1,A_B_C_D,tips,tempTipsTracesList, tempNonTipsTracesList, tempTraceIDFractures, tempTraceCoordinates);
                     continue;
                 } else if(n==4) {
-                    //cout << "Case 4. Trace is AD. True both." << endl;
+                    //cout << Trace is AD. True both." << endl;
                     array<bool,2> tips = {true,true};
                     executeCase(count,i,j,0,3,A_B_C_D,tips,tempTipsTracesList, tempNonTipsTracesList, tempTraceIDFractures, tempTraceCoordinates);
                     continue;
                 } else if(n==6 || n==-2 || n==-3) {
-                    //cout << "Case 6. Trace is CD. F1 true. F2 false." << endl;
+                    //cout << "Trace is CD. F1 true. F2 false." << endl;
                     array<bool,2> tips = {true,false};
                     executeCase(count,i,j,2,3,A_B_C_D,tips,tempTipsTracesList, tempNonTipsTracesList, tempTraceIDFractures, tempTraceCoordinates);
                     continue;
                 } else if(n==-4) {
-                    //cout << "Case 7.2" << endl;
                     //cout << "Trace is AD. false F1. true F2" << endl;
                     array<bool,2> tips = {false,true};
                     executeCase(count,i,j,0,3,A_B_C_D,tips,tempTipsTracesList, tempNonTipsTracesList, tempTraceIDFractures, tempTraceCoordinates);
@@ -299,14 +298,6 @@ namespace DFNLibrary {
         exportTraces("Traces.txt", TracesList);
         exportFractures("Fractures.txt", FractureList, TracesList);
 
-    }
-//*********************************************************
-    inline double computeSquaredDistancePoints(const Vector3d &Point1, const Vector3d &Point2) {
-        double dist = 0.0;
-        for(unsigned int i=0;i<3;i++) {
-            dist += (Point1(i)-Point2(i))*(Point1(i)-Point2(i));
-        }
-        return dist;
     }
 //*********************************************************
     inline void executeCase(unsigned int& count, const unsigned int& i, const unsigned int& j, const unsigned int& pos1, const unsigned int& pos2,
@@ -369,8 +360,14 @@ namespace DFNLibrary {
         // we first check if any of these points coincide
 
         const bool A_equals_C = (fabs(betas[0]-betas[2])/max(max(fabs(betas[0]),fabs(betas[2])),{1}) < tol);
-        //bool A_equals_D = (fabs(betas[0]-betas[3])/max(max(fabs(betas[0]),fabs(betas[3])),{1}) < tol); // not possible under our hypotheses
-        // bool B_equals_C = (fabs(betas[1]-betas[2])/max(max(fabs(betas[1]),fabs(betas[2])),{1}) < tol); // not possible under our hypotheses
+        bool A_equals_D = (fabs(betas[0]-betas[3])/max(max(fabs(betas[0]),fabs(betas[3])),{1}) < tol);
+        if(A_equals_D) {
+            return 1;
+        }
+        bool B_equals_C = (fabs(betas[1]-betas[2])/max(max(fabs(betas[1]),fabs(betas[2])),{1}) < tol);
+        if(B_equals_C) {
+            return 1;
+        }
         const bool B_equals_D = (fabs(betas[1]-betas[3])/max(max(fabs(betas[1]),fabs(betas[3])),{1}) < tol);
         if(A_equals_C && B_equals_D) {
             //cout << "Trace is A_B. Tips for both." << endl;
@@ -624,7 +621,7 @@ namespace DFNLibrary {
                                     solVec.push_back(P1);
                                     edges_ids_sol.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                     tempVec.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
-                                    iter.push_back((k+1)%mesh.Cell2DEdges.size());
+                                    iter.push_back((k+1)%num_edges);
                                 } else if(tol < beta && beta < 1-tol) {
                                     // intersection coincides with P
                                     solVec.push_back(P);
@@ -659,7 +656,7 @@ namespace DFNLibrary {
                             continue;
                         }
 
-                        cut(mesh, solVec, edges_ids_sol, tempVec, iter,l,tol);
+                        cut(mesh, solVec, edges_ids_sol, tempVec, iter,l,tol,false);
 
                     } // chiudo ciclo sui poligoni
 
@@ -701,67 +698,27 @@ namespace DFNLibrary {
                     const Vector3d Q1 = trace_end_points.col(1);
                     for(unsigned int l=0;l<num_polygons;l++) { // iterate on every 2D cell
                         // check whether Q0 and Q1 belong to the edges of the polygon
+                        // check whether Q0 and Q1 belong to the edges of the polygon
                         int id1 = -1;
                         int id2 = -1;
                         const unsigned int num_edges = mesh.Cell2DEdges[l].size();
                         for(unsigned int k=0;k<num_edges;k++) {
                             const Vector3d P0 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][k]];
                             const Vector3d P1 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][(k+1)%num_edges]];
-                            double alpha0 = 0.0;
-                            double alpha1 = 0.0;
-                            if(fabs((P0-P1)(0))>tol) {
-                                if(id1==-1) {
-                                    alpha0 = (Q0-P1)(0)/(P0-P1)(0);
-                                    const double res1 = fabs(Q0(1)-P1(1)-alpha0*(P0(1)-P1(1)));
-                                    const double res2 = fabs(Q0(2)-P1(2)-alpha0*(P0(2)-P1(2)));
-                                    if(-tol <= alpha0 && alpha0 <= 1+tol && res1<=tol && res2<=tol ) {
-                                        id1 = k;
-                                    }
+                            const double edge_length = sqrt(computeSquaredDistancePoints(P0,P1));
+                            if(id1==-1) {
+                                const double lengthQ0P0 = sqrt(computeSquaredDistancePoints(Q0,P0));
+                                const double lengthQ0P1 = sqrt(computeSquaredDistancePoints(Q0,P1));
+                                if(fabs(edge_length-lengthQ0P0-lengthQ0P1)<=tol) {
+                                    id1 = k;
                                 }
-                                if(id2 == -1) {
-                                    alpha1 = (Q1-P1)(0)/(P0-P1)(0);
-                                    const double res1 = fabs(Q1(1)-P1(1)-alpha1*(P0(1)-P1(1)));
-                                    const double res2 = fabs(Q1(2)-P1(2)-alpha1*(P0(2)-P1(2)));
-                                    if(-tol <= alpha1 && alpha1 <= 1+tol && res1<=tol && res2<=tol ) {
-                                        id2 = k;
-                                    }
+                            }
+                            if(id2==-1) {
+                                const double lengthQ1P0 = sqrt(computeSquaredDistancePoints(Q1,P0));
+                                const double lengthQ1P1 = sqrt(computeSquaredDistancePoints(Q1,P1));
+                                if(fabs(edge_length-lengthQ1P0-lengthQ1P1)<=tol) {
+                                    id2 = k;
                                 }
-                            } else if(fabs((P0-P1)(1))>tol) {
-                                if(id1==-1) {
-                                    alpha0 = (Q0-P1)(1)/(P0-P1)(1);
-                                    const double res1 = fabs(Q0(0)-P1(0)-alpha0*(P0(0)-P1(0)));
-                                    const double res2 = fabs(Q0(2)-P1(2)-alpha0*(P0(2)-P1(2)));
-                                    if(-tol <= alpha0 && alpha0 <= 1+tol && res1<=tol && res2<=tol ) {
-                                        id1 = k;
-                                    }
-                                }
-                                if(id2 == -1) {
-                                    alpha1 = (Q1-P1)(1)/(P0-P1)(1);
-                                    const double res1 = fabs(Q1(0)-P1(0)-alpha1*(P0(0)-P1(0)));
-                                    const double res2 = fabs(Q1(2)-P1(2)-alpha1*(P0(2)-P1(2)));
-                                    if(-tol <= alpha1 && alpha1 <= 1+tol && res1<=tol && res2<=tol ) {
-                                        id2 = k;
-                                    }
-                                }
-                            } else if(fabs((P0-P1)(2))>tol) {
-                                if(id1==-1) {
-                                    alpha0 = (Q0-P1)(2)/(P0-P1)(2);
-                                    const double res1 = fabs(Q0(0)-P1(0)-alpha0*(P0(0)-P1(0)));
-                                    const double res2 = fabs(Q0(1)-P1(1)-alpha0*(P0(1)-P1(1)));
-                                    if(-tol <= alpha0 && alpha0 <= 1+tol && res1<=tol && res2<=tol ) {
-                                        id1 = k;
-                                    }
-                                }
-                                if(id2 == -1) {
-                                    alpha1 = (Q1-P1)(2)/(P0-P1)(2);
-                                    const double res1 = fabs(Q1(0)-P1(0)-alpha1*(P0(0)-P1(0)));
-                                    const double res2 = fabs(Q1(1)-P1(1)-alpha1*(P0(1)-P1(1)));
-                                    if(-tol <= alpha1 && alpha1 <= 1+tol && res1<=tol && res2<=tol ) {
-                                        id2 = k;
-                                    }
-                                }
-                            } else {
-                                cout << "Something went wrong.";
                             }
                             if(id1!=-1 && id2!=-1) {
                                 break;
@@ -836,7 +793,7 @@ namespace DFNLibrary {
                                             solVec.push_back(P1);
                                             edges_ids_sol.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             tempVec.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
-                                            iter.push_back((k+1)%mesh.Cell2DEdges.size());
+                                            iter.push_back((k+1)%num_edges);
                                         } else if(tol < beta && beta < 1-tol) {
                                             // intersection coincides with P
                                             solVec.push_back(P);
@@ -871,7 +828,7 @@ namespace DFNLibrary {
                                     continue;
                                 }
 
-                                cut(mesh,solVec,edges_ids_sol,tempVec,iter,l,tol);
+                                cut(mesh,solVec,edges_ids_sol,tempVec,iter,l,tol,true);
                                 if(inside_cellQ0 && inside_cellQ1) {
                                     break;
                                 }
@@ -931,7 +888,7 @@ namespace DFNLibrary {
                                             solVec.push_back(P1);
                                             edges_ids_sol.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             tempVec.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
-                                            iter.push_back((k+1)%mesh.Cell2DEdges.size());
+                                            iter.push_back((k+1)%num_edges);
                                         } else if(tol < beta && beta < 1-tol) {
                                             // intersection coincides with P
                                             solVec.push_back(P);
@@ -966,11 +923,11 @@ namespace DFNLibrary {
                                     continue;
                                 }
 
-                                cut(mesh,solVec,edges_ids_sol,tempVec,iter,l,tol);
+                                cut(mesh,solVec,edges_ids_sol,tempVec,iter,l,tol,true);
                             }
 
                         } else if((id1!=-1 && id2==-1) || (id1==-1 && id2!=-1)) {
-                            // one point is outside or outside the polygon, the other one belongs to one of the edges
+                            // one point is outside or inside the polygon, the other one belongs to one of the edges
                             vector<int> tempVec;
                             tempVec.reserve(2);
                             // at the end of the procedure, temp(0) will equal -1 if the first intersection does not coincide with any of the
@@ -1027,7 +984,7 @@ namespace DFNLibrary {
                                             solVec.push_back(P1);
                                             edges_ids_sol.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             tempVec.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
-                                            iter.push_back((k+1)%mesh.Cell2DEdges.size());
+                                            iter.push_back((k+1)%num_edges);
                                         } else if(tol < beta && beta < 1-tol) {
                                             // intersection coincides with P
                                             solVec.push_back(P);
@@ -1055,7 +1012,7 @@ namespace DFNLibrary {
                                             solVec.push_back(P1);
                                             edges_ids_sol.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             tempVec.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
-                                            iter.push_back((k+1)%mesh.Cell2DEdges.size());
+                                            iter.push_back((k+1)%num_edges);
                                         } else if(tol < beta && beta < 1-tol) {
                                             // intersection coincides with P
                                             solVec.push_back(P);
@@ -1091,7 +1048,7 @@ namespace DFNLibrary {
                                 continue;
                             }
 
-                            cut(mesh,solVec,edges_ids_sol,tempVec,iter,l,tol);
+                            cut(mesh,solVec,edges_ids_sol,tempVec,iter,l,tol,true);
 
                             if((id1!=-1 && inside_cellQ1) || (inside_cellQ0 && id2!=-1)) {
                                 break;
@@ -1155,7 +1112,7 @@ namespace DFNLibrary {
                                             solVec.push_back(P1);
                                             edges_ids_sol.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             tempVec.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
-                                            iter.push_back((k+1)%mesh.Cell2DEdges.size());
+                                            iter.push_back((k+1)%num_edges);
                                         } else if(tol < beta && beta < 1-tol) {
                                             // intersection coincides with P
                                             solVec.push_back(P);
@@ -1190,7 +1147,7 @@ namespace DFNLibrary {
                                     continue;
                                 }
 
-                                cut(mesh,solVec,edges_ids_sol,tempVec,iter,l,tol);
+                                cut(mesh,solVec,edges_ids_sol,tempVec,iter,l,tol,true);
                             }
 
                         }
@@ -1207,7 +1164,7 @@ namespace DFNLibrary {
         }
     }
 //*********************************************************
-    void cut(PolygonalMesh &mesh, vector<Vector3d> &solVec, const vector<unsigned int> &edges_ids_sol, vector<int> &tempVec, vector<unsigned int> &iter, const unsigned int &l, const double &tol) {
+    void cut(PolygonalMesh &mesh, vector<Vector3d> &solVec, const vector<unsigned int> &edges_ids_sol, vector<int> &tempVec, vector<unsigned int> &iter, const unsigned int &l, const double &tol, const bool& tips) {
 
         if(tempVec[0]==-1 && tempVec[1]==-1) {
             const unsigned int id_edge_first_intersection = edges_ids_sol[0];
@@ -1238,7 +1195,7 @@ namespace DFNLibrary {
             unsigned int m1 = 0;
 
             for(unsigned int k=0;k<IdOldEdges.size();k++) {
-                if(IdOldEdges[k]==id_edge_first_intersection || IdOldEdges[k] == id_edge_second_intersection) {
+                if(IdOldEdges[k]==id_edge_first_intersection) {
                     IdNewVertices1.push_back(mesh.Cell2DVertices[l][k]);
                     k1 = k;
                     break;
@@ -1248,12 +1205,12 @@ namespace DFNLibrary {
                 }
             }
 
-            IdNewEdges1.push_back(mesh.NumberCell1D);
-            IdNewEdges1.push_back(mesh.NumberCell1D+2);
+            IdNewEdges1.push_back(id_edge_first_intersection);
+            IdNewEdges1.push_back(mesh.NumberCell1D+1);
             IdNewVertices1.push_back(mesh.NumberCell0D);
             IdNewVertices1.push_back(mesh.NumberCell0D+1);
 
-            IdNewEdges2.push_back(mesh.NumberCell1D+1);
+            IdNewEdges2.push_back(mesh.NumberCell1D);
             IdNewVertices2.push_back(mesh.NumberCell0D);
 
             for(unsigned int m=k1+1;m<IdOldEdges.size();m++) {
@@ -1267,9 +1224,9 @@ namespace DFNLibrary {
                 }
             }
             IdNewVertices2.push_back(mesh.NumberCell0D+1);
-            IdNewEdges2.push_back(mesh.NumberCell1D+3);
-            IdNewEdges2.push_back(mesh.NumberCell1D+2);
-            IdNewEdges1.push_back(mesh.NumberCell1D+4);
+            IdNewEdges2.push_back(id_edge_second_intersection);
+            IdNewEdges2.push_back(mesh.NumberCell1D+1);
+            IdNewEdges1.push_back(mesh.NumberCell1D+2);
             for(unsigned int n=m1+1;n<IdOldEdges.size();n++) {
                 IdNewVertices1.push_back(mesh.Cell2DVertices[l][n]);
                 IdNewEdges1.push_back(IdOldEdges[n]);;
@@ -1290,6 +1247,65 @@ namespace DFNLibrary {
             }
             // else, do the updates
 
+            // remove the edges with id id_edge_first_intersection and id_edge_second_intersection
+            bool first_int_found = false;
+            bool second_int_found = false;
+            unsigned int start;
+            if(!tips) {
+                start = l+1;
+            } else {
+                start = 0;
+            }
+            for(unsigned int l1 = start; l1<mesh.NumberCell2D;l1++) {
+                // we check every 2D cell
+                if(l1==l){
+                    continue;
+                }
+                const vector<unsigned int> edges = mesh.Cell2DEdges[l1];
+                for(unsigned int k=0;k<edges.size();k++) {
+                    if(!first_int_found) {
+                        if(edges[k] == id_edge_first_intersection) {
+                            // modify the edges of that cell
+                            first_int_found = true;
+                            const unsigned int idP0 = mesh.Cell2DVertices[l1][k]; // initial point of that edge
+                            const unsigned int idP1 = mesh.Cell2DVertices[l1][(k+1)%edges.size()]; // end point of that edge
+                            if(mesh.Cell2DVertices[l][k1]==idP0) {
+                                mesh.Cell2DEdges[l1][k] = id_edge_first_intersection;
+                                mesh.Cell2DEdges[l1].insert(mesh.Cell2DEdges[l1].begin()+k+1,mesh.NumberCell1D);
+                            } else if(mesh.Cell2DVertices[l][k1]==idP1) {
+                                mesh.Cell2DEdges[l1][k] = mesh.NumberCell1D;
+                                mesh.Cell2DEdges[l1].insert(mesh.Cell2DEdges[l1].begin()+k+1, id_edge_first_intersection);
+                            }
+
+                            mesh.Cell2DVertices[l1].insert(mesh.Cell2DVertices[l1].begin()+k+1, mesh.NumberCell0D); // added new vertex to that cell
+                            break;
+                        }
+                    }
+
+                    if(!second_int_found) {
+                        if(edges[k] == id_edge_second_intersection) {
+                            // modify the edges of that cell
+                            second_int_found = true;
+                            const unsigned int idP0 = mesh.Cell2DVertices[l1][k]; // initial point of that edge
+                            const unsigned int idP1 = mesh.Cell2DVertices[l1][(k+1)%edges.size()]; // end point of that edge
+                            if(mesh.Cell2DVertices[l][m1]==idP0) {
+                                mesh.Cell2DEdges[l1][k] = id_edge_second_intersection;
+                                mesh.Cell2DEdges[l1].insert(mesh.Cell2DEdges[l1].begin()+k+1,mesh.NumberCell1D+2);
+                            } else if(mesh.Cell2DVertices[l][m1]==idP1) {
+                                mesh.Cell2DEdges[l1][k] = mesh.NumberCell1D+2;
+                                mesh.Cell2DEdges[l1].insert(mesh.Cell2DEdges[l1].begin()+k+1, id_edge_second_intersection);
+                            }
+                            mesh.Cell2DVertices[l1].insert(mesh.Cell2DVertices[l1].begin()+k+1, mesh.NumberCell0D+1); // added new vertex to that cell
+                            break;
+                        }
+                    }
+
+                }
+                if(first_int_found && second_int_found) {
+                    break;
+                }
+            }
+
             //update Cell0Ds
             mesh.Cell0DId.push_back(mesh.NumberCell0D);
             mesh.Cell0DId.push_back(mesh.NumberCell0D+1);
@@ -1297,13 +1313,13 @@ namespace DFNLibrary {
             mesh.Cell0DCoordinates.push_back(second_intersection);
 
             // update Cell1Ds
-            for(unsigned int k=0;k<5;k++) {
+            for(unsigned int k=0;k<3;k++) {
                 mesh.Cell1DId.push_back(mesh.NumberCell1D+k);
             }
-            mesh.Cell1DVertices.push_back({mesh.Cell0DId[mesh.Cell2DVertices[l][iter[0]]],mesh.NumberCell0D});
+            mesh.Cell1DVertices[id_edge_first_intersection] = {mesh.Cell0DId[mesh.Cell2DVertices[l][iter[0]]],mesh.NumberCell0D};
             mesh.Cell1DVertices.push_back({mesh.NumberCell0D, mesh.Cell0DId[mesh.Cell2DVertices[l][(iter[0]+1)%mesh.Cell2DVertices[l].size()]]});
             mesh.Cell1DVertices.push_back({mesh.NumberCell0D,mesh.NumberCell0D+1});
-            mesh.Cell1DVertices.push_back({mesh.Cell0DId[mesh.Cell2DVertices[l][iter[1]]],mesh.NumberCell0D+1});
+            mesh.Cell1DVertices[id_edge_second_intersection] = {mesh.Cell0DId[mesh.Cell2DVertices[l][iter[1]]],mesh.NumberCell0D+1};
             mesh.Cell1DVertices.push_back({mesh.NumberCell0D+1, mesh.Cell0DId[mesh.Cell2DVertices[l][(iter[1]+1)%mesh.Cell2DVertices[l].size()]]});
 
             // update Cell2Ds
@@ -1316,7 +1332,7 @@ namespace DFNLibrary {
             mesh.Cell2DEdges.push_back(IdNewEdges2);
 
             mesh.NumberCell0D += 2;
-            mesh.NumberCell1D += 5;
+            mesh.NumberCell1D += 3;
             mesh.NumberCell2D += 1;
 
         } else if(tempVec[0]!=-1 && tempVec[1]!=-1){
@@ -1358,7 +1374,7 @@ namespace DFNLibrary {
 
             IdNewEdges1.push_back(mesh.NumberCell1D);
 
-            IdNewEdges2.push_back(k1);
+            IdNewEdges2.push_back(IdOldEdges[k1]);
             for(unsigned int m=k1+1;m<IdOldEdges.size();m++) {
                 if(IdOldEdges[m]==id_edge_second_intersection) {
                     IdNewVertices1.push_back(mesh.Cell2DVertices[l][m]);
@@ -1437,7 +1453,7 @@ namespace DFNLibrary {
             unsigned int m1 = 0;
 
             for(unsigned int k=0;k<IdOldEdges.size();k++) {
-                if(IdOldEdges[k]==id_edge_first_intersection || IdOldEdges[k] == id_edge_second_intersection) {
+                if(IdOldEdges[k]==id_edge_first_intersection) {
                     IdNewVertices1.push_back(mesh.Cell2DVertices[l][k]);
                     k1 = k;
                     break;
@@ -1447,7 +1463,7 @@ namespace DFNLibrary {
                 }
             }
 
-            IdNewEdges1.push_back(mesh.NumberCell1D+2);
+            IdNewEdges1.push_back(mesh.NumberCell1D+1);
             IdNewVertices1.push_back(mesh.NumberCell0D);
 
             IdNewEdges2.push_back(IdOldEdges[k1]);
@@ -1464,9 +1480,9 @@ namespace DFNLibrary {
                 }
             }
             IdNewVertices2.push_back(mesh.NumberCell0D);
-            IdNewEdges2.push_back(mesh.NumberCell1D);
-            IdNewEdges2.push_back(mesh.NumberCell1D+2);
-            IdNewEdges1.push_back(mesh.NumberCell1D+1);
+            IdNewEdges2.push_back(id_edge_second_intersection);
+            IdNewEdges2.push_back(mesh.NumberCell1D+1);
+            IdNewEdges1.push_back(mesh.NumberCell1D);
             for(unsigned int n=m1+1;n<IdOldEdges.size();n++) {
                 IdNewVertices1.push_back(mesh.Cell2DVertices[l][n]);
                 IdNewEdges1.push_back(IdOldEdges[n]);;
@@ -1487,15 +1503,53 @@ namespace DFNLibrary {
             }
             // else, do the updates
 
+            // remove the edges with id id_edge_first_intersection and id_edge_second_intersection
+            bool second_int_found = false;
+            unsigned int start;
+            if(!tips) {
+                start = l+1;
+            } else {
+                start = 0;
+            }
+            for(unsigned int l1 = start; l1<mesh.NumberCell2D;l1++) {
+                if(l1==l) {
+                    continue;
+                }
+                const vector<unsigned int> edges = mesh.Cell2DEdges[l1];
+                for(unsigned int k=0;k<edges.size();k++) {
+                    if(!second_int_found) {
+                        if(edges[k] == id_edge_second_intersection) {
+                            // modify the edges of that cell
+                            second_int_found = true;
+                            const unsigned int idP0 = mesh.Cell2DVertices[l1][k]; // initial point of that edge
+                            const unsigned int idP1 = mesh.Cell2DVertices[l1][(k+1)%edges.size()]; // end point of that edge
+                            if(mesh.Cell2DVertices[l][m1]==idP0) {
+                                mesh.Cell2DEdges[l1][k] = id_edge_second_intersection;
+                                mesh.Cell2DEdges[l1].insert(mesh.Cell2DEdges[l1].begin()+k+1,mesh.NumberCell1D);
+                            } else if(mesh.Cell2DVertices[l][m1]==idP1) {
+                                mesh.Cell2DEdges[l1][k] = mesh.NumberCell1D;
+                                mesh.Cell2DEdges[l1].insert(mesh.Cell2DEdges[l1].begin()+k+1, id_edge_second_intersection);
+                            }
+                            mesh.Cell2DVertices[l1].insert(mesh.Cell2DVertices[l1].begin()+k+1, mesh.NumberCell0D); // added new vertex to that cell
+                            break;
+                        }
+                    }
+
+                }
+                if(second_int_found) {
+                    break;
+                }
+            }
+
             //update Cell0Ds
             mesh.Cell0DId.push_back(mesh.NumberCell0D);
             mesh.Cell0DCoordinates.push_back(second_intersection);
 
             // update Cell1Ds
-            for(unsigned int k=0;k<3;k++) {
+            for(unsigned int k=0;k<2;k++) {
                 mesh.Cell1DId.push_back(mesh.NumberCell1D+k);
             }
-            mesh.Cell1DVertices.push_back({mesh.Cell0DId[mesh.Cell2DVertices[l][iter[1]]],mesh.NumberCell0D});
+            mesh.Cell1DVertices[id_edge_second_intersection] = {mesh.Cell0DId[mesh.Cell2DVertices[l][iter[1]]],mesh.NumberCell0D};
             mesh.Cell1DVertices.push_back({mesh.NumberCell0D, mesh.Cell0DId[mesh.Cell2DVertices[l][(iter[1]+1)%mesh.Cell2DVertices[l].size()]]});
             mesh.Cell1DVertices.push_back({mesh.NumberCell0D,mesh.Cell0DId[mesh.Cell2DVertices[l][iter[0]]]});
 
@@ -1509,7 +1563,7 @@ namespace DFNLibrary {
             mesh.Cell2DEdges.push_back(IdNewEdges2);
 
             mesh.NumberCell0D += 1;
-            mesh.NumberCell1D += 3;
+            mesh.NumberCell1D += 2;
             mesh.NumberCell2D += 1;
 
         } else if(tempVec[0]==-1 && tempVec[1]!=-1) {
@@ -1549,12 +1603,12 @@ namespace DFNLibrary {
                 }
             }
 
-            IdNewEdges1.push_back(mesh.NumberCell1D);
-            IdNewEdges1.push_back(mesh.NumberCell1D+2);
+            IdNewEdges1.push_back(id_edge_first_intersection);
+            IdNewEdges1.push_back(mesh.NumberCell1D+1);
             IdNewVertices1.push_back(mesh.NumberCell0D);
 
             IdNewVertices2.push_back(mesh.NumberCell0D);
-            IdNewEdges2.push_back(mesh.NumberCell1D+1);
+            IdNewEdges2.push_back(mesh.NumberCell1D);
 
             for(unsigned int m=k1+1;m<IdOldEdges.size();m++) {
                 if(IdOldEdges[m]==id_edge_second_intersection) {
@@ -1566,7 +1620,7 @@ namespace DFNLibrary {
                     IdNewEdges2.push_back(IdOldEdges[m]);
                 }
             }
-            IdNewEdges2.push_back(mesh.NumberCell1D+2);
+            IdNewEdges2.push_back(mesh.NumberCell1D+1);
             IdNewEdges1.push_back(IdOldEdges[m1]);
             IdNewVertices1.push_back(mesh.Cell2DVertices[l][m1]);
             for(unsigned int n=m1+1;n<IdOldEdges.size();n++) {
@@ -1589,17 +1643,56 @@ namespace DFNLibrary {
             }
             // else, do the updates
 
+            // remove the edges with id id_edge_first_intersection and id_edge_second_intersection
+            bool first_int_found = false;
+            unsigned int start;
+            if(!tips) {
+                start = l+1;
+            } else {
+                start = 0;
+            }
+            for(unsigned int l1 = start; l1<mesh.NumberCell2D;l1++) {
+                // we check every 2D cell
+                if(l1==l) {
+                    continue;
+                }
+                const vector<unsigned int> edges = mesh.Cell2DEdges[l1];
+                for(unsigned int k=0;k<edges.size();k++) {
+                    if(!first_int_found) {
+                        if(edges[k] == id_edge_first_intersection) {
+                            // modify the edges of that cell
+                            first_int_found = true;
+                            const unsigned int idP0 = mesh.Cell2DVertices[l1][k]; // initial point of that edge
+                            const unsigned int idP1 = mesh.Cell2DVertices[l1][(k+1)%edges.size()]; // end point of that edge
+                            if(mesh.Cell2DVertices[l][k1]==idP0) {
+                                mesh.Cell2DEdges[l1][k] = id_edge_first_intersection;
+                                mesh.Cell2DEdges[l1].insert(mesh.Cell2DEdges[l1].begin()+k+1,mesh.NumberCell1D);
+                            } else if(mesh.Cell2DVertices[l][k1]==idP1) {
+                                mesh.Cell2DEdges[l1][k] = mesh.NumberCell1D;
+                                mesh.Cell2DEdges[l1].insert(mesh.Cell2DEdges[l1].begin()+k+1, id_edge_first_intersection);
+                            }
+                            mesh.Cell2DVertices[l1].insert(mesh.Cell2DVertices[l1].begin()+k+1, mesh.NumberCell0D); // added new vertex to that cell
+                            break;
+                        }
+                    }
+
+                }
+                if(first_int_found) {
+                    break;
+                }
+            }
+
             //update Cell0Ds
             mesh.Cell0DId.push_back(mesh.NumberCell0D);
             mesh.Cell0DCoordinates.push_back(first_intersection);
 
             // update Cell1Ds
-            for(unsigned int k=0;k<3;k++) {
+            for(unsigned int k=0;k<2;k++) {
                 mesh.Cell1DId.push_back(mesh.NumberCell1D+k);
             }
-            mesh.Cell1DVertices.push_back({mesh.Cell0DId[mesh.Cell2DVertices[l][iter[1]]],mesh.NumberCell0D});
-            mesh.Cell1DVertices.push_back({mesh.NumberCell0D, mesh.Cell0DId[mesh.Cell2DVertices[l][(iter[1]+1)%mesh.Cell2DVertices[l].size()]]});
-            mesh.Cell1DVertices.push_back({mesh.NumberCell0D,mesh.Cell0DId[mesh.Cell2DVertices[l][iter[0]]]});
+            mesh.Cell1DVertices[id_edge_first_intersection] = {mesh.Cell0DId[mesh.Cell2DVertices[l][iter[0]]],mesh.NumberCell0D};
+            mesh.Cell1DVertices.push_back({mesh.NumberCell0D, mesh.Cell0DId[mesh.Cell2DVertices[l][(iter[0]+1)%mesh.Cell2DVertices[l].size()]]});
+            mesh.Cell1DVertices.push_back({mesh.NumberCell0D,mesh.Cell0DId[mesh.Cell2DVertices[l][iter[1]]]});
 
             // update Cell2Ds
             mesh.Cell2DId.push_back(mesh.NumberCell2D);
@@ -1611,7 +1704,7 @@ namespace DFNLibrary {
             mesh.Cell2DEdges.push_back(IdNewEdges2);
 
             mesh.NumberCell0D += 1;
-            mesh.NumberCell1D += 3;
+            mesh.NumberCell1D += 2;
             mesh.NumberCell2D += 1;
 
 
@@ -1620,24 +1713,59 @@ namespace DFNLibrary {
 //*********************************************************
     void exportParaview(const string &outputFileName, const Fractures& FractureList) {
         Gedim::UCDUtilities exporter;
-        vector<vector<unsigned int>> quadrilaterals;
-        quadrilaterals.resize(FractureList.FractVertices.size());
-        for(unsigned int k=0;k<quadrilaterals.size();k++) {
-            quadrilaterals[k] = {4*k,4*k+1,4*k+2,4*k+3};
+
+        vector<vector<unsigned int>> triangles;
+        VectorXi materials;
+
+        // find total number of points
+        unsigned int num_points = 0;
+        for(unsigned int i=0;i<FractureList.FractVertices.size();i++) {
+            num_points += FractureList.FractVertices[i].cols();
         }
-        VectorXi materials = VectorXi::Zero(FractureList.FractVertices.size());
-        for(unsigned int k=0;k<materials.size();k++) {
-            materials(k) = k;
-        }
-        MatrixXd VerticesCoordinates = MatrixXd::Zero(3,FractureList.FractVertices.size()*4);
+        MatrixXd VerticesCoordinates = MatrixXd::Zero(3,num_points);
+        unsigned int temp = 0;
         for(unsigned int k=0;k<FractureList.FractVertices.size();k++) {
             for(unsigned int l=0;l<FractureList.FractVertices[k].cols();l++) {
-                VerticesCoordinates.col(4*k+l) = FractureList.FractVertices[k].col(l);
+                VerticesCoordinates.col(l+temp) = FractureList.FractVertices[k].col(l);
+            }
+            temp += FractureList.FractVertices[k].cols();
+        }
+        temp = 0;
+        vector<vector<unsigned int>> listVertices;
+        listVertices.resize(FractureList.FractVertices.size());
+        for(unsigned int i=0;i<listVertices.size();i++) {
+            const unsigned int n = FractureList.FractVertices[i].cols();
+            listVertices[i].resize(n);
+            for(unsigned int k=0;k<n;k++){
+                listVertices[i][k] = k+temp;
+            }
+            temp+=n;
+        }
+
+        const unsigned int numPolygons = listVertices.size();
+        vector<vector<vector<unsigned int>>> triangleList = TriangulatePolygons(listVertices);
+
+        unsigned int numTotalTriangles = 0;
+        for(unsigned int p = 0; p < numPolygons; p++)
+            numTotalTriangles += triangleList[p].size();
+
+        triangles.reserve(numTotalTriangles);
+        materials = VectorXi::Zero(numTotalTriangles);
+
+        unsigned int count = 0;
+        for(unsigned int p = 0; p < numPolygons; p++)
+        {
+            for(unsigned int t = 0; t < triangleList[p].size(); t++)
+            {
+                triangles.push_back(triangleList[p][t]);
+                materials(count) = p;
+                count++;
             }
         }
+
         exporter.ExportPolygons(outputFileName,
                                 VerticesCoordinates,
-                                quadrilaterals,
+                                triangles,
                                 {},
                                 {},
                                 materials);
@@ -1683,12 +1811,15 @@ namespace DFNLibrary {
             cerr << "Something went wrong opening output file." << endl;
             return false;
         }
+        file1 << scientific << setprecision(16);
         const unsigned int num_fractures = FractureList.FractMeanPoint.size();
         for(unsigned int i=0; i<num_fractures;i++) {
             file1 << "Fracture id;" << i << ";Number Cell0Ds;" << FractureList.FractMesh[i].NumberCell0D << ";" << endl;
             file1 << "Id;X;Y;Z;" << endl;
             for(unsigned int j=0;j<FractureList.FractMesh[i].NumberCell0D;j++) {
-                file1 << j <<";" << scientific << setprecision(16) << FractureList.FractMesh[i].Cell0DCoordinates[j](0) <<";" << FractureList.FractMesh[i].Cell0DCoordinates[j](1) <<";" << FractureList.FractMesh[i].Cell0DCoordinates[j](2) <<";" << endl;
+                file1 << j << ";" << FractureList.FractMesh[i].Cell0DCoordinates[j](0) <<";"
+                      << FractureList.FractMesh[i].Cell0DCoordinates[j](1) <<";"
+                      << FractureList.FractMesh[i].Cell0DCoordinates[j](2) <<";" << endl;
             }
             file1 << endl;
 
