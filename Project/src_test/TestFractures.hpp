@@ -26,6 +26,7 @@ TEST(DFNTest, Mesh) {
     Vector3d Q2 = {1.0,0.5,0.0};
     Vector3d Q3 = {0.0,0.5,0.0};
 
+
     Vector3d Q4 = {0.0,0.0,0.0};
     Vector3d Q5 = {1.0,0.5,0.0};
 
@@ -61,6 +62,7 @@ TEST(DFNTest, Mesh) {
 
     MatrixXd t1 = MatrixXd::Zero(3,2);
     MatrixXd t2 = MatrixXd::Zero(3,2);
+
     MatrixXd t3 = MatrixXd::Zero(3,2);
     MatrixXd t4 = MatrixXd::Zero(3,2);
     MatrixXd t5 = MatrixXd::Zero(3,2);
@@ -89,16 +91,119 @@ TEST(DFNTest, Mesh) {
 
     T.TraceCoordinates.push_back(t1);
     T.TraceCoordinates.push_back(t2);
+
     T.TraceCoordinates.push_back(t3);
     T.TraceCoordinates.push_back(t4);
+
     T.TraceCoordinates.push_back(t5);
     T.TraceCoordinates.push_back(t6);
     T.TraceCoordinates.push_back(t7);
     computePolygonalMesh(F,T,tol);
     exportFractureMesh("./mesh_test.inp",F,0);
+}
+TEST(DFNTest, ImportAndCompute){
+    Fractures F;
+    Traces T;
+    const double tol = 1e-13;
+    importFractureList("./DFN/FR3_data.txt", F);
 
-    int ciao = 0;
-    EXPECT_EQ(0,ciao);
+
+    EXPECT_DOUBLE_EQ(0.0, F.FractVertices[0](0,0));
+    EXPECT_DOUBLE_EQ(0.0, F.FractVertices[0](1,0));
+    EXPECT_DOUBLE_EQ(0.0, F.FractVertices[0](2,0));
+
+    EXPECT_DOUBLE_EQ(0.5, F.FractMeanPoint[0][0]);
+    EXPECT_DOUBLE_EQ(1.0, F.FractPlanes[0].Normal[2]);
+    EXPECT_DOUBLE_EQ(0.0, F.FractPlanes[0].d);
+
+    computeTraces(F, T, tol);
+
+    EXPECT_DOUBLE_EQ(1.0, T.TraceLength[0]);
+
+    EXPECT_DOUBLE_EQ(0.8, T.TraceCoordinates[0](0,0));
+    EXPECT_DOUBLE_EQ(1.0, T.TraceCoordinates[0](1,0));
+    EXPECT_DOUBLE_EQ(0.0, T.TraceCoordinates[0](2,0));
+
+    EXPECT_DOUBLE_EQ(0.8, T.TraceCoordinates[0](0,1));
+    EXPECT_DOUBLE_EQ(0.0, T.TraceCoordinates[0](1,1));
+    EXPECT_DOUBLE_EQ(0.0, T.TraceCoordinates[0](2,1));
+
+    EXPECT_EQ(0, T.TraceIDFractures[0][0]);
+    EXPECT_EQ(1, T.TraceIDFractures[0][1]);
+
+    EXPECT_EQ(1, F.listTraces[0][true][0]);
+    EXPECT_EQ(0, F.listTraces[0][false][0]);
+}
+
+TEST(DFNTest, Findcase){
+    const double tol = 1e-13;
+    vector<double> Betas0 = {3.0, 1.0, 3.0, 1.0};
+    EXPECT_EQ(0, findCase(Betas0, tol));
+
+    vector<double> Betas1 = {1.0, 3.0, 4.0, 6.0};
+    EXPECT_EQ(1, findCase(Betas1, tol));
+
+    vector<double> Betas2 = {2.0, 4.0, 1.0, 5.0};
+    EXPECT_EQ(2, findCase(Betas2, tol));
+
+    vector<double> Betas3 = {1.0, 3.0, 2.0, 4.0};
+    EXPECT_EQ(3, findCase(Betas3, tol));
+
+    vector<double> Betas4 = {2.0, 4.0, 1.0, 3.0};
+    EXPECT_EQ(4, findCase(Betas4, tol));
+
+    vector<double> Betas5 = {4.0, 6.0, 1.0, 3.0};
+    EXPECT_EQ(5, findCase(Betas5, tol));
+
+    vector<double> Betas6 = {1.0, 5.0, 2.0, 4.0};
+    EXPECT_EQ(6, findCase(Betas6, tol));
+
+    vector<double> Betas_1 = {1.0, 3.0, 1.0, 4.0};
+    EXPECT_EQ(-1, findCase(Betas_1, tol));
+
+    vector<double> Betas_2 = {1.0, 4.0, 1.0, 3.0};
+    EXPECT_EQ(-2, findCase(Betas_2, tol));
+
+    vector<double> Betas_3 = {1.0, 4.0, 2.0, 4.0};
+    EXPECT_EQ(-3, findCase(Betas_3, tol));
+
+    vector<double> Betas_4 = {2.0, 4.0, 1.0, 4.0};
+    EXPECT_EQ(-4, findCase(Betas_4, tol));
+
+}
+
+TEST(DFNTest, IntersectionPossibility){
+    // Intersection
+    const double tol = 1e-13;
+    const MatrixXd Matrix_1 = (Eigen::MatrixXd(3, 4)<< 0.0, 2.0, 2.0, 0.0,
+                               0.0, 0.0, 2.0, 2.0,
+                               0.0, 0.0, 0.0, 0.0).finished();
+    const MatrixXd Matrix_2 = (Eigen::MatrixXd(3, 4)<< 1.0, 1.0, 1.0, 1.0,
+                               0.0, 0.0, 2.0, 2.0,
+                               1.0, -1.0, -1.0, 1.0).finished();
+    const Vector3d  meanPoint1 = {1.0, 1.0, 0.0};
+    const Vector3d  meanPoint2 = {1.0, 1.0, 0.0};
+    bool check1 = checkIntersectionPossibility(Matrix_1, Matrix_2, meanPoint1, meanPoint2, tol);
+    EXPECT_TRUE(check1);
+
+    // No intersection
+    MatrixXd Matrix_3 = (Eigen::MatrixXd(3, 4)<< 0.0, 2.0, 2.0, 0.0,
+                         3.0, 3.0, 5.0, 5.0,
+                         0.0, 0.0, 0.0, 0.0).finished();
+    MatrixXd Matrix_4 = (Eigen::MatrixXd(3, 4)<< 1.0, 1.0, 1.0, 1.0,
+                         0.0, 0.0, 2.0, 2.0,
+                         1.0, -1.0, -1.0, 1.0).finished();
+    const Vector3d  meanPoint3 = {1.0, 4.0, 0.0};
+    const Vector3d  meanPoint4 = {1.0, 1.0, 0.0};
+    bool check2 = checkIntersectionPossibility(Matrix_3, Matrix_4, meanPoint3, meanPoint4, tol);
+    EXPECT_FALSE(check2);
+}
+
+TEST(GeometryTest, SquaredDistance){
+    const Vector3d Point1 = {2.0, 0.0, 0.0};
+    const Vector3d Point2 = {0.0, 0.0, 0.0};
+    double d = computeSquaredDistancePoints(Point1, Point2);
+    EXPECT_DOUBLE_EQ(4.0, d);
 }
 
 

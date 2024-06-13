@@ -92,4 +92,12 @@ void FractMeshGedimInterface(const vector<vector<unsigned int>>& Cell2DVertices,
 ///
 bool pointInsidePolygon(double tol, const Vector3d& P, const vector<unsigned int>& VerticesIDs, const vector<Vector3d>& VerticesCoordinates, Vector3d &PlaneNormal);
 //*********************************************************
+///
+/// \brief computeSquaredDistancePoints: computes the squared distance between two given points in R^3
+/// \param Point1
+/// \param Point2
+/// \return squared distance between Point1 and Point2
+///
+double computeSquaredDistancePoints(const Vector3d& Point1, const Vector3d& Point2);
+//*********************************************************
 }

@@ -9,6 +9,14 @@ using namespace std;
 using namespace Eigen;
 namespace GeometryLibrary {
 //*********************************************************
+double computeSquaredDistancePoints(const Vector3d &Point1, const Vector3d &Point2) {
+    double dist = 0.0;
+    for(unsigned int i=0;i<3;i++) {
+        dist += (Point1(i)-Point2(i))*(Point1(i)-Point2(i));
+    }
+    return dist;
+}
+//*********************************************************
     vector<vector<vector<unsigned int>>> TriangulatePolygons(const vector<vector<unsigned int>>& Cell2DCoordinates)
     {
         const unsigned int numPolygons = Cell2DCoordinates.size();
