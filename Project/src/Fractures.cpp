@@ -500,35 +500,34 @@ namespace DFNLibrary {
             // initialize polygonal mesh
             cout << "Frattura " << i << endl;
             MatrixXd vertices = FractureList.FractVertices[i];
-            PolygonalMesh mesh;
             unsigned int num_vertices = vertices.cols();
             unsigned int num_edges = num_vertices;
             unsigned int num_polygons = 1; // first iteration, the only polygon is the fracture itself
 
-            mesh.NumberCell0D = num_vertices;
-            mesh.Cell0DCoordinates.resize(num_vertices);
-            mesh.Cell0DId.resize(num_vertices);
+            FractureList.FractMesh[i].NumberCell0D = num_vertices;
+            FractureList.FractMesh[i].Cell0DCoordinates.resize(num_vertices);
+            FractureList.FractMesh[i].Cell0DId.resize(num_vertices);
 
-            mesh.NumberCell1D = num_edges;
-            mesh.Cell1DId.resize(num_edges);
-            mesh.Cell1DVertices.resize(num_edges);
+            FractureList.FractMesh[i].NumberCell1D = num_edges;
+            FractureList.FractMesh[i].Cell1DId.resize(num_edges);
+            FractureList.FractMesh[i].Cell1DVertices.resize(num_edges);
 
-            mesh.NumberCell2D = 1;
-            mesh.Cell2DId.resize(1);
-            mesh.Cell2DVertices.resize(1);
-            mesh.Cell2DEdges.resize(1);
+            FractureList.FractMesh[i].NumberCell2D = 1;
+            FractureList.FractMesh[i].Cell2DId.resize(1);
+            FractureList.FractMesh[i].Cell2DVertices.resize(1);
+            FractureList.FractMesh[i].Cell2DEdges.resize(1);
 
-            for(unsigned int i=0; i<num_vertices;i++) {
-                mesh.Cell0DId[i] = i;
-                mesh.Cell0DCoordinates[i] = vertices.col(i);
+            for(unsigned int j=0; j<num_vertices;j++) {
+                FractureList.FractMesh[i].Cell0DId[j] = j;
+                FractureList.FractMesh[i].Cell0DCoordinates[j] = vertices.col(j);
 
-                mesh.Cell1DId[i] = i;
-                mesh.Cell1DVertices[i] = {i, (i+1)%num_vertices};
+                FractureList.FractMesh[i].Cell1DId[j] = j;
+                FractureList.FractMesh[i].Cell1DVertices[j] = {j, (j+1)%num_vertices};
             }
 
-            mesh.Cell2DId[0] = 0;
-            mesh.Cell2DVertices[0] = mesh.Cell0DId;
-            mesh.Cell2DEdges[0] = mesh.Cell1DId;
+            FractureList.FractMesh[i].Cell2DId[0] = 0;
+            FractureList.FractMesh[i].Cell2DVertices[0] = FractureList.FractMesh[i].Cell0DId;
+            FractureList.FractMesh[i].Cell2DEdges[0] = FractureList.FractMesh[i].Cell1DId;
 
             // first polygonal mesh initialized
             // we will now update it
@@ -542,20 +541,20 @@ namespace DFNLibrary {
 
             if(num_passing_traces > 0) {
                 // compute
-                mesh.Cell0DId.reserve(2*num_passing_traces);
-                mesh.Cell0DCoordinates.reserve(2*num_passing_traces);
+                FractureList.FractMesh[i].Cell0DId.reserve(2*num_passing_traces);
+                FractureList.FractMesh[i].Cell0DCoordinates.reserve(2*num_passing_traces);
 
-                mesh.Cell1DId.reserve(5*num_passing_traces);
-                mesh.Cell1DVertices.reserve(5*num_passing_traces);
+                FractureList.FractMesh[i].Cell1DId.reserve(5*num_passing_traces);
+                FractureList.FractMesh[i].Cell1DVertices.reserve(5*num_passing_traces);
 
-                mesh.Cell2DId.reserve(num_passing_traces);
-                mesh.Cell2DVertices.reserve(num_passing_traces);
-                mesh.Cell2DEdges.reserve(num_passing_traces);
+                FractureList.FractMesh[i].Cell2DId.reserve(num_passing_traces);
+                FractureList.FractMesh[i].Cell2DVertices.reserve(num_passing_traces);
+                FractureList.FractMesh[i].Cell2DEdges.reserve(num_passing_traces);
 
                 for(unsigned int j=0; j<num_passing_traces; j++) {
                     // iterate on passing traces
                     //cout << j << endl;
-                    num_polygons = mesh.NumberCell2D;
+                    num_polygons = FractureList.FractMesh[i].NumberCell2D;
                     const unsigned int trace_id = passing_traces[j];
                     const MatrixXd trace_end_points = TracesList.TraceCoordinates[trace_id];
                     const Vector3d Q0 = trace_end_points.col(0);
@@ -563,7 +562,7 @@ namespace DFNLibrary {
                     for(unsigned int l=0;l<num_polygons;l++) { // iterate on every 2D cell
 
                         // CHECK WHETHER THE TRACE CUTS THE POLYGON, AND IN WHICH POINTS
-                        num_edges = mesh.Cell2DEdges[l].size();
+                        num_edges = FractureList.FractMesh[i].Cell2DEdges[l].size();
 
                         vector<int> tempVec;
                         tempVec.reserve(2);
@@ -588,8 +587,8 @@ namespace DFNLibrary {
                                 continue;
                             }
 
-                            const Vector3d P0 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][k]];
-                            const Vector3d P1 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][(k+1)%num_edges]];
+                            const Vector3d P0 = FractureList.FractMesh[i].Cell0DCoordinates[FractureList.FractMesh[i].Cell2DVertices[l][k]];
+                            const Vector3d P1 = FractureList.FractMesh[i].Cell0DCoordinates[FractureList.FractMesh[i].Cell2DVertices[l][(k+1)%num_edges]];
 
                             MatrixXd M = MatrixXd::Zero(3,2);
                             M.col(0) = Q0-Q1;
@@ -619,21 +618,21 @@ namespace DFNLibrary {
                                     // if this happens, the intersection coincides with P1
                                     skip = true;
                                     solVec.push_back(P1);
-                                    edges_ids_sol.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
-                                    tempVec.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                    edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                    tempVec.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                     iter.push_back((k+1)%num_edges);
                                 } else if(tol < beta && beta < 1-tol) {
                                     // intersection coincides with P
                                     solVec.push_back(P);
-                                    edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]);
+                                    edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]);
                                     tempVec.push_back(-1);
                                     iter.push_back(k);
                                 } else if(1-tol <= beta && beta <= 1+ tol) {
                                     // beta is basically equal to 1
                                     // if this happens, the intersection coincides with P0
                                     solVec.push_back(P0);
-                                    edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
-                                    tempVec.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                    edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                    tempVec.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]); // because P0 is the starting point of this edge
                                     iter.push_back(k);
                                 }
                             }
@@ -656,7 +655,7 @@ namespace DFNLibrary {
                             continue;
                         }
 
-                        cut(mesh, solVec, edges_ids_sol, tempVec, iter,l,tol,false);
+                        cut(FractureList.FractMesh[i], solVec, edges_ids_sol, tempVec, iter,l,tol,false);
 
                     } // chiudo ciclo sui poligoni
 
@@ -664,34 +663,34 @@ namespace DFNLibrary {
 
             } // chiudo if sul numero delle tracce passanti
 
-            mesh.Cell0DId.shrink_to_fit();
-            mesh.Cell0DCoordinates.shrink_to_fit();
+            FractureList.FractMesh[i].Cell0DId.shrink_to_fit();
+            FractureList.FractMesh[i].Cell0DCoordinates.shrink_to_fit();
 
-            mesh.Cell1DId.shrink_to_fit();
-            mesh.Cell1DVertices.shrink_to_fit();
+            FractureList.FractMesh[i].Cell1DId.shrink_to_fit();
+            FractureList.FractMesh[i].Cell1DVertices.shrink_to_fit();
 
-            mesh.Cell2DId.shrink_to_fit();
-            mesh.Cell2DVertices.shrink_to_fit();
-            mesh.Cell2DEdges.shrink_to_fit();
+            FractureList.FractMesh[i].Cell2DId.shrink_to_fit();
+            FractureList.FractMesh[i].Cell2DVertices.shrink_to_fit();
+            FractureList.FractMesh[i].Cell2DEdges.shrink_to_fit();
 
 
 
             if(num_non_passing_traces > 0) {
                 // compute
-                mesh.Cell0DId.reserve(2*num_non_passing_traces);
-                mesh.Cell0DCoordinates.reserve(2*num_non_passing_traces);
+                FractureList.FractMesh[i].Cell0DId.reserve(2*num_non_passing_traces);
+                FractureList.FractMesh[i].Cell0DCoordinates.reserve(2*num_non_passing_traces);
 
-                mesh.Cell1DId.reserve(5*num_non_passing_traces);
-                mesh.Cell1DVertices.reserve(5*num_non_passing_traces);
+                FractureList.FractMesh[i].Cell1DId.reserve(5*num_non_passing_traces);
+                FractureList.FractMesh[i].Cell1DVertices.reserve(5*num_non_passing_traces);
 
-                mesh.Cell2DId.reserve(num_non_passing_traces);
-                mesh.Cell2DVertices.reserve(num_non_passing_traces);
-                mesh.Cell2DEdges.reserve(num_non_passing_traces);
+                FractureList.FractMesh[i].Cell2DId.reserve(num_non_passing_traces);
+                FractureList.FractMesh[i].Cell2DVertices.reserve(num_non_passing_traces);
+                FractureList.FractMesh[i].Cell2DEdges.reserve(num_non_passing_traces);
 
                 for(unsigned int j=0; j<num_non_passing_traces; j++) {
                     // iterate on passing traces
                     //cout << j << endl;
-                    num_polygons = mesh.NumberCell2D;
+                    num_polygons = FractureList.FractMesh[i].NumberCell2D;
                     const unsigned int trace_id = non_passing_traces[j];
                     const MatrixXd trace_end_points = TracesList.TraceCoordinates[trace_id];
                     const Vector3d Q0 = trace_end_points.col(0);
@@ -701,10 +700,10 @@ namespace DFNLibrary {
                         // check whether Q0 and Q1 belong to the edges of the polygon
                         int id1 = -1;
                         int id2 = -1;
-                        const unsigned int num_edges = mesh.Cell2DEdges[l].size();
+                        const unsigned int num_edges = FractureList.FractMesh[i].Cell2DEdges[l].size();
                         for(unsigned int k=0;k<num_edges;k++) {
-                            const Vector3d P0 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][k]];
-                            const Vector3d P1 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][(k+1)%num_edges]];
+                            const Vector3d P0 = FractureList.FractMesh[i].Cell0DCoordinates[FractureList.FractMesh[i].Cell2DVertices[l][k]];
+                            const Vector3d P1 = FractureList.FractMesh[i].Cell0DCoordinates[FractureList.FractMesh[i].Cell2DVertices[l][(k+1)%num_edges]];
                             const double edge_length = sqrt(computeSquaredDistancePoints(P0,P1));
                             if(id1==-1) {
                                 const double lengthQ0P0 = sqrt(computeSquaredDistancePoints(Q0,P0));
@@ -730,10 +729,10 @@ namespace DFNLibrary {
                         bool inside_cellQ1 = false;
 
                         if(id1==-1) {
-                            inside_cellQ0 = pointInsidePolygon(tol,Q0,mesh.Cell2DVertices[l],mesh.Cell0DCoordinates,FractureList.FractPlanes[i].Normal);
+                            inside_cellQ0 = pointInsidePolygon(tol,Q0,FractureList.FractMesh[i].Cell2DVertices[l],FractureList.FractMesh[i].Cell0DCoordinates,FractureList.FractPlanes[i].Normal);
                         }
                         if(id2==-1) {
-                            inside_cellQ1 = pointInsidePolygon(tol,Q1,mesh.Cell2DVertices[l],mesh.Cell0DCoordinates,FractureList.FractPlanes[i].Normal);
+                            inside_cellQ1 = pointInsidePolygon(tol,Q1,FractureList.FractMesh[i].Cell2DVertices[l],FractureList.FractMesh[i].Cell0DCoordinates,FractureList.FractPlanes[i].Normal);
                         }
                         if(id1==-1 && id2==-1) {
                             if(inside_cellQ0 || inside_cellQ1) {
@@ -760,8 +759,8 @@ namespace DFNLibrary {
                                         continue;
                                     }
 
-                                    const Vector3d P0 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][k]];
-                                    const Vector3d P1 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][(k+1)%num_edges]];
+                                    const Vector3d P0 = FractureList.FractMesh[i].Cell0DCoordinates[FractureList.FractMesh[i].Cell2DVertices[l][k]];
+                                    const Vector3d P1 = FractureList.FractMesh[i].Cell0DCoordinates[FractureList.FractMesh[i].Cell2DVertices[l][(k+1)%num_edges]];
 
                                     MatrixXd M = MatrixXd::Zero(3,2);
                                     M.col(0) = Q0-Q1;
@@ -791,21 +790,21 @@ namespace DFNLibrary {
                                             // if this happens, the intersection coincides with P1
                                             skip = true;
                                             solVec.push_back(P1);
-                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
-                                            tempVec.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            tempVec.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             iter.push_back((k+1)%num_edges);
                                         } else if(tol < beta && beta < 1-tol) {
                                             // intersection coincides with P
                                             solVec.push_back(P);
-                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]);
+                                            edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]);
                                             tempVec.push_back(-1);
                                             iter.push_back(k);
                                         } else if(1-tol <= beta && beta <= 1+ tol) {
                                             // beta is basically equal to 1
                                             // if this happens, the intersection coincides with P0
                                             solVec.push_back(P0);
-                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
-                                            tempVec.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            tempVec.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]); // because P0 is the starting point of this edge
                                             iter.push_back(k);
                                         }
                                     }
@@ -828,7 +827,7 @@ namespace DFNLibrary {
                                     continue;
                                 }
 
-                                cut(mesh,solVec,edges_ids_sol,tempVec,iter,l,tol,true);
+                                cut(FractureList.FractMesh[i],solVec,edges_ids_sol,tempVec,iter,l,tol,true);
                                 if(inside_cellQ0 && inside_cellQ1) {
                                     break;
                                 }
@@ -855,8 +854,8 @@ namespace DFNLibrary {
                                         continue;
                                     }
 
-                                    const Vector3d P0 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][k]];
-                                    const Vector3d P1 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][(k+1)%num_edges]];
+                                    const Vector3d P0 = FractureList.FractMesh[i].Cell0DCoordinates[FractureList.FractMesh[i].Cell2DVertices[l][k]];
+                                    const Vector3d P1 = FractureList.FractMesh[i].Cell0DCoordinates[FractureList.FractMesh[i].Cell2DVertices[l][(k+1)%num_edges]];
 
                                     MatrixXd M = MatrixXd::Zero(3,2);
                                     M.col(0) = Q0-Q1;
@@ -886,21 +885,21 @@ namespace DFNLibrary {
                                             // if this happens, the intersection coincides with P1
                                             skip = true;
                                             solVec.push_back(P1);
-                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
-                                            tempVec.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            tempVec.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             iter.push_back((k+1)%num_edges);
                                         } else if(tol < beta && beta < 1-tol) {
                                             // intersection coincides with P
                                             solVec.push_back(P);
-                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]);
+                                            edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]);
                                             tempVec.push_back(-1);
                                             iter.push_back(k);
                                         } else if(1-tol <= beta && beta <= 1+ tol) {
                                             // beta is basically equal to 1
                                             // if this happens, the intersection coincides with P0
                                             solVec.push_back(P0);
-                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
-                                            tempVec.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            tempVec.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]); // because P0 is the starting point of this edge
                                             iter.push_back(k);
                                         }
                                     }
@@ -923,7 +922,7 @@ namespace DFNLibrary {
                                     continue;
                                 }
 
-                                cut(mesh,solVec,edges_ids_sol,tempVec,iter,l,tol,true);
+                                cut(FractureList.FractMesh[i],solVec,edges_ids_sol,tempVec,iter,l,tol,true);
                             }
 
                         } else if((id1!=-1 && id2==-1) || (id1==-1 && id2!=-1)) {
@@ -950,8 +949,8 @@ namespace DFNLibrary {
                                     continue;
                                 }
 
-                                const Vector3d P0 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][k]];
-                                const Vector3d P1 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][(k+1)%num_edges]];
+                                const Vector3d P0 = FractureList.FractMesh[i].Cell0DCoordinates[FractureList.FractMesh[i].Cell2DVertices[l][k]];
+                                const Vector3d P1 = FractureList.FractMesh[i].Cell0DCoordinates[FractureList.FractMesh[i].Cell2DVertices[l][(k+1)%num_edges]];
 
                                 MatrixXd M = MatrixXd::Zero(3,2);
                                 M.col(0) = Q0-Q1;
@@ -982,21 +981,21 @@ namespace DFNLibrary {
                                             // if this happens, the intersection coincides with P1
                                             skip = true;
                                             solVec.push_back(P1);
-                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
-                                            tempVec.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            tempVec.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             iter.push_back((k+1)%num_edges);
                                         } else if(tol < beta && beta < 1-tol) {
                                             // intersection coincides with P
                                             solVec.push_back(P);
-                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]);
+                                            edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]);
                                             tempVec.push_back(-1);
                                             iter.push_back(k);
                                         } else if(1-tol <= beta && beta <= 1+ tol) {
                                             // beta is basically equal to 1
                                             // if this happens, the intersection coincides with P0
                                             solVec.push_back(P0);
-                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
-                                            tempVec.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            tempVec.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]); // because P0 is the starting point of this edge
                                             iter.push_back(k);
                                         }
                                     }
@@ -1010,21 +1009,21 @@ namespace DFNLibrary {
                                             // if this happens, the intersection coincides with P1
                                             skip = true;
                                             solVec.push_back(P1);
-                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
-                                            tempVec.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            tempVec.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             iter.push_back((k+1)%num_edges);
                                         } else if(tol < beta && beta < 1-tol) {
                                             // intersection coincides with P
                                             solVec.push_back(P);
-                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]);
+                                            edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]);
                                             tempVec.push_back(-1);
                                             iter.push_back(k);
                                         } else if(1-tol <= beta && beta <= 1+ tol) {
                                             // beta is basically equal to 1
                                             // if this happens, the intersection coincides with P0
                                             solVec.push_back(P0);
-                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
-                                            tempVec.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            tempVec.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]); // because P0 is the starting point of this edge
                                             iter.push_back(k);
                                         }
                                     }
@@ -1048,7 +1047,7 @@ namespace DFNLibrary {
                                 continue;
                             }
 
-                            cut(mesh,solVec,edges_ids_sol,tempVec,iter,l,tol,true);
+                            cut(FractureList.FractMesh[i],solVec,edges_ids_sol,tempVec,iter,l,tol,true);
 
                             if((id1!=-1 && inside_cellQ1) || (inside_cellQ0 && id2!=-1)) {
                                 break;
@@ -1079,8 +1078,8 @@ namespace DFNLibrary {
                                         continue;
                                     }
 
-                                    const Vector3d P0 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][k]];
-                                    const Vector3d P1 = mesh.Cell0DCoordinates[mesh.Cell2DVertices[l][(k+1)%num_edges]];
+                                    const Vector3d P0 = FractureList.FractMesh[i].Cell0DCoordinates[FractureList.FractMesh[i].Cell2DVertices[l][k]];
+                                    const Vector3d P1 = FractureList.FractMesh[i].Cell0DCoordinates[FractureList.FractMesh[i].Cell2DVertices[l][(k+1)%num_edges]];
 
                                     MatrixXd M = MatrixXd::Zero(3,2);
                                     M.col(0) = Q0-Q1;
@@ -1110,21 +1109,21 @@ namespace DFNLibrary {
                                             // if this happens, the intersection coincides with P1
                                             skip = true;
                                             solVec.push_back(P1);
-                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
-                                            tempVec.push_back(mesh.Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
+                                            tempVec.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             iter.push_back((k+1)%num_edges);
                                         } else if(tol < beta && beta < 1-tol) {
                                             // intersection coincides with P
                                             solVec.push_back(P);
-                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]);
+                                            edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]);
                                             tempVec.push_back(-1);
                                             iter.push_back(k);
                                         } else if(1-tol <= beta && beta <= 1+ tol) {
                                             // beta is basically equal to 1
                                             // if this happens, the intersection coincides with P0
                                             solVec.push_back(P0);
-                                            edges_ids_sol.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
-                                            tempVec.push_back(mesh.Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]); // because P0 is the starting point of this edge
+                                            tempVec.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]); // because P0 is the starting point of this edge
                                             iter.push_back(k);
                                         }
                                     }
@@ -1147,7 +1146,7 @@ namespace DFNLibrary {
                                     continue;
                                 }
 
-                                cut(mesh,solVec,edges_ids_sol,tempVec,iter,l,tol,true);
+                                cut(FractureList.FractMesh[i],solVec,edges_ids_sol,tempVec,iter,l,tol,true);
                             }
 
                         }
@@ -1159,8 +1158,7 @@ namespace DFNLibrary {
                 }
 
             }
-            FractureList.FractMesh[i] = mesh;
-            //FractureList.FractMesh.push_back(mesh);
+            //FractureList.FractMesh[i] = mesh;
         }
     }
 //*********************************************************
