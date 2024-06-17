@@ -1,6 +1,6 @@
 @startuml
 
-title Documentazione UML
+title  Documentazione UML
 'top to bottom direction
 left to right direction
 
