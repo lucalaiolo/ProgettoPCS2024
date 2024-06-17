@@ -130,10 +130,10 @@ void exportTraces(const string& outputFileName, const Traces &TracesList);
 void exportFractures(const string& outputFileName, Fractures& FractureList, const Traces &TracesList);
 //*********************************************************
 ///
-/// \brief computeTracesSquaredLength: for each trace, computes its squared length
+/// \brief computeTracesSquaredLength: for each trace, computes its length
 /// \param TracesList: a Traces struct
 ///
-void computeTracesSquaredLength(Traces& TracesList);
+void computeTracesLength(Traces& TracesList);
 //*********************************************************
 ///
 /// \brief exportParaview: exports a .inp file readable by paraview. It's possible to visualize the fractures using that file
@@ -145,9 +145,10 @@ void exportParaview(const string& outputFileName, const Fractures& FractureList)
 /// \brief computePolygonalMesh: computes, for every fracture, the polygonal mesh obtained by cutting that fracture with its traces
 /// \param FractureList:  a Fractures struct
 /// \param TracesList: a Traces struct
-/// \param tol: tolerance for comparisons between doubles
+/// \param tol1D
+/// \param tol2D
 ///
-void computePolygonalMesh(Fractures& FractureList, const Traces& TracesList, const double& tol);
+void computePolygonalMesh(Fractures& FractureList, const Traces& TracesList, const double& tol1D, const double& tol2D);
 //*********************************************************
 ///
 /// \brief cut: cut one polygon of a polygonal mesh using a certain segment (trace, in our case)
@@ -161,7 +162,7 @@ void computePolygonalMesh(Fractures& FractureList, const Traces& TracesList, con
 /// \param tol: tolerance for comparisons between doubles
 /// \param tips: true if one of the end points of the trace do not belong to the edges of the fracture considered, false otherwise
 ///
-void cut(PolygonalMesh& mesh, vector<Vector3d>& solVec, const vector<unsigned int>& edges_ids_sol, vector<int>& tempVec, vector<unsigned int>& iter, const unsigned int &l, const double &tol, const bool &tips);
+void cut(PolygonalMesh& mesh, const vector<Vector3d>& solVec, const vector<unsigned int>& edges_ids_sol, const vector<int>& tempVec, const vector<unsigned int>& iter, const unsigned int &l, const double &tol, const bool &tips);
 //*********************************************************
 ///
 /// \brief exportFractureMesh: produces an ouput file readable by paraview. using that, it's possible to visualize the polygonal mesh of a certain fracture obtained using computePolygonalMesh
