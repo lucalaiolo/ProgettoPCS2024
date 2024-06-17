@@ -116,7 +116,7 @@ namespace DFNLibrary {
                 // find line of intersection between the two planes
                 const Vector3d t = n1.cross(n2);
                 if(fabs(t(0)) < tol && fabs(t(1))<tol && fabs(t(2)) < tol) {
-                    // cout << "Planes are parallel."<< endl;
+                    // Planes are parallel
                     continue;
                 }
                 Matrix3d M1;
@@ -146,7 +146,93 @@ namespace DFNLibrary {
                     // we check whether the segment and the line are coplanar and non parallel
                     const Vector3d temp_vec = t.cross((E1-E2)/((E1-E2).norm()));
                     if(fabs(temp_vec(0))<tol && fabs(temp_vec(1))<tol && fabs(temp_vec(2))<tol) {
-                        continue; // segment and line are parallel
+                        // segment and line are parallel
+                        // check whether the segment lies on the line
+
+                        // check whether E1 and E2 belong to the line
+                        double tempBeta0;
+                        double tempBeta1;
+                        if(fabs(t(0))>tol) {
+                            tempBeta0 = (E1(0)-P(0))/t(0);
+                            tempBeta1 = (E2(0)-P(0))/t(0);
+                            const double res1 = fabs(E1(1)-P(1)-tempBeta0*t(1));
+                            const double res2 = fabs(E1(2)-P(2)-tempBeta0*t(2));
+                            if(res1 < tol && res2 < tol) {
+                                // intersection is the edge with vertices E1 and E2
+                                if(A_B_C_D.size()==1) {
+                                    A_B_C_D[0]=E1;
+                                    betas[0]=tempBeta0;
+                                    A_B_C_D.push_back(E2);
+                                    betas.push_back(tempBeta1);
+                                } else if(A_B_C_D.size()==2){
+                                    A_B_C_D[0]=E1;
+                                    A_B_C_D[1]=E2;
+                                    betas[0]=tempBeta0;
+                                    betas[1]=tempBeta1;
+                                } else {
+                                    A_B_C_D.push_back(E1);
+                                    A_B_C_D.push_back(E2);
+                                    betas.push_back(tempBeta0);
+                                    betas.push_back(tempBeta1);
+                                }
+                                break;
+                            }
+
+                        } else if(fabs(t(1))>tol) {
+                            tempBeta0 = (E1(1)-P(1))/t(1);
+                            tempBeta1 = (E2(1)-P(1))/t(1);
+                            const double res1 = fabs(E1(0)-P(0)-tempBeta0*t(0));
+                            const double res2 = fabs(E1(2)-P(2)-tempBeta0*t(2));
+                            if(res1 < tol && res2 < tol) {
+                                // intersection is the edge with vertices E1 and E2
+                                if(A_B_C_D.size()==1) {
+                                    A_B_C_D[0]=E1;
+                                    betas[0]=tempBeta0;
+                                    A_B_C_D.push_back(E2);
+                                    betas.push_back(tempBeta1);
+                                } else if(A_B_C_D.size()==2){
+                                    A_B_C_D[0]=E1;
+                                    A_B_C_D[1]=E2;
+                                    betas[0]=tempBeta0;
+                                    betas[1]=tempBeta1;
+                                } else {
+                                    A_B_C_D.push_back(E1);
+                                    A_B_C_D.push_back(E2);
+                                    betas.push_back(tempBeta0);
+                                    betas.push_back(tempBeta1);
+                                }
+                                break;
+                            }
+
+                        } else {
+                            tempBeta0 = (E1(2)-P(2))/t(2);
+                            tempBeta1 = (E2(2)-P(2))/t(2);
+                            const double res1 = fabs(E1(0)-P(0)-tempBeta0*t(0));
+                            const double res2 = fabs(E1(1)-P(1)-tempBeta0*t(1));
+                            if(res1 < tol && res2 < tol) {
+                                // intersection is the edge with vertices E1 and E2
+                                if(A_B_C_D.size()==1) {
+                                    A_B_C_D[0]=E1;
+                                    betas[0]=tempBeta0;
+                                    A_B_C_D.push_back(E2);
+                                    betas.push_back(tempBeta1);
+                                } else if(A_B_C_D.size()==2){
+                                    A_B_C_D[0]=E1;
+                                    A_B_C_D[1]=E2;
+                                    betas[0]=tempBeta0;
+                                    betas[1]=tempBeta1;
+                                } else {
+                                    A_B_C_D.push_back(E1);
+                                    A_B_C_D.push_back(E2);
+                                    betas.push_back(tempBeta0);
+                                    betas.push_back(tempBeta1);
+                                }
+                                break;
+                            }
+
+                        }
+
+                        continue; // segment and line are parallel and do not intersect
                     }
 
                     if(fabs((c/(c.norm())).dot(temp_vec)) > tol) {
@@ -181,7 +267,95 @@ namespace DFNLibrary {
                     // we check whether the segment and the line are coplanar and non parallel
                     const Vector3d temp_vec = t.cross((E1-E2)/((E1-E2).norm()));
                     if(fabs(temp_vec(0))<tol && fabs(temp_vec(1))<tol && fabs(temp_vec(2))<tol) {
-                        continue; // segment and line are parallel
+
+                        // segment and line are parallel
+                        // check whether the segment lies on the line
+
+                        // check whether E1 and E2 belong to the line
+                        double tempBeta0;
+                        double tempBeta1;
+                        if(fabs(t(0))>tol) {
+                            tempBeta0 = (E1(0)-P(0))/t(0);
+                            tempBeta1 = (E2(0)-P(0))/t(0);
+                            const double res1 = fabs(E1(1)-P(1)-tempBeta0*t(1));
+                            const double res2 = fabs(E1(2)-P(2)-tempBeta0*t(2));
+                            if(res1 < tol && res2 < tol) {
+                                // intersection is the edge with vertices E1 and E2
+                                if(A_B_C_D.size()==3) {
+                                    A_B_C_D[2]=E1;
+                                    betas[2]=tempBeta0;
+                                    A_B_C_D.push_back(E2);
+                                    betas.push_back(tempBeta1);
+                                } else if(A_B_C_D.size()==4){
+                                    A_B_C_D[2]=E1;
+                                    A_B_C_D[3]=E2;
+                                    betas[2]=tempBeta0;
+                                    betas[3]=tempBeta1;
+                                } else {
+                                    A_B_C_D.push_back(E1);
+                                    A_B_C_D.push_back(E2);
+                                    betas.push_back(tempBeta0);
+                                    betas.push_back(tempBeta1);
+                                }
+                                break;
+                            }
+
+                        } else if(fabs(t(1))>tol) {
+                            tempBeta0 = (E1(1)-P(1))/t(1);
+                            tempBeta1 = (E2(1)-P(1))/t(1);
+                            const double res1 = fabs(E1(0)-P(0)-tempBeta0*t(0));
+                            const double res2 = fabs(E1(2)-P(2)-tempBeta0*t(2));
+                            if(res1 < tol && res2 < tol) {
+                                // intersection is the edge with vertices E1 and E2
+                                if(A_B_C_D.size()==3) {
+                                    A_B_C_D[2]=E1;
+                                    betas[2]=tempBeta0;
+                                    A_B_C_D.push_back(E2);
+                                    betas.push_back(tempBeta1);
+                                } else if(A_B_C_D.size()==4){
+                                    A_B_C_D[2]=E1;
+                                    A_B_C_D[3]=E2;
+                                    betas[2]=tempBeta0;
+                                    betas[3]=tempBeta1;
+                                } else {
+                                    A_B_C_D.push_back(E1);
+                                    A_B_C_D.push_back(E2);
+                                    betas.push_back(tempBeta0);
+                                    betas.push_back(tempBeta1);
+                                }
+                                break;
+                            }
+
+                        } else {
+                            tempBeta0 = (E1(2)-P(2))/t(2);
+                            tempBeta1 = (E2(2)-P(2))/t(2);
+                            const double res1 = fabs(E1(0)-P(0)-tempBeta0*t(0));
+                            const double res2 = fabs(E1(1)-P(1)-tempBeta0*t(1));
+                            if(res1 < tol && res2 < tol) {
+                                // intersection is the edge with vertices E1 and E2
+                                if(A_B_C_D.size()==3) {
+                                    A_B_C_D[2]=E1;
+                                    betas[2]=tempBeta0;
+                                    A_B_C_D.push_back(E2);
+                                    betas.push_back(tempBeta1);
+                                } else if(A_B_C_D.size()==4){
+                                    A_B_C_D[2]=E1;
+                                    A_B_C_D[3]=E2;
+                                    betas[2]=tempBeta0;
+                                    betas[3]=tempBeta1;
+                                } else {
+                                    A_B_C_D.push_back(E1);
+                                    A_B_C_D.push_back(E2);
+                                    betas.push_back(tempBeta0);
+                                    betas.push_back(tempBeta1);
+                                }
+                                break;
+                            }
+
+                        }
+
+                        continue; // segment and line are parallel and do not intersect
+
                     }
 
                     if(fabs((c/(c.norm())).dot(temp_vec)) > tol) {
@@ -202,7 +376,7 @@ namespace DFNLibrary {
                     }
                 }
                 if(A_B_C_D.size() != 4) {
-                    //cout << "No intersection" << endl; // no intersection
+                    // no intersection
                     continue;
                 }
 
@@ -235,35 +409,28 @@ namespace DFNLibrary {
                 const int n = findCase(betas,tol);
 
                 if(n==0) {
-                    //cout << "Trace is A_B. False for both." << endl;
                     array<bool,2> tips = {false,false};
                     executeCase(count,i,j,0,1,A_B_C_D,tips, tempTipsTracesList, tempNonTipsTracesList, tempTraceIDFractures, tempTraceCoordinates);
                     continue;
                 } else if(n == 1 || n == 5) {
-                    //cout << "No trace" << endl;
                     continue;
                 } else if(n==-1 || n==2) {
-                    //cout << "Trace is A_B. False F1. True F2." << endl;
                     array<bool,2> tips = {false,true};
                     executeCase(count,i,j,0,1,A_B_C_D,tips,tempTipsTracesList, tempNonTipsTracesList, tempTraceIDFractures, tempTraceCoordinates);
                     continue;
                 } else if(n==3) {
-                    //cout << Trace is CB. True both." << endl;
                     array<bool,2> tips = {true,true};
                     executeCase(count,i,j,2,1,A_B_C_D,tips,tempTipsTracesList, tempNonTipsTracesList, tempTraceIDFractures, tempTraceCoordinates);
                     continue;
                 } else if(n==4) {
-                    //cout << Trace is AD. True both." << endl;
                     array<bool,2> tips = {true,true};
                     executeCase(count,i,j,0,3,A_B_C_D,tips,tempTipsTracesList, tempNonTipsTracesList, tempTraceIDFractures, tempTraceCoordinates);
                     continue;
                 } else if(n==6 || n==-2 || n==-3) {
-                    //cout << "Trace is CD. F1 true. F2 false." << endl;
                     array<bool,2> tips = {true,false};
                     executeCase(count,i,j,2,3,A_B_C_D,tips,tempTipsTracesList, tempNonTipsTracesList, tempTraceIDFractures, tempTraceCoordinates);
                     continue;
                 } else if(n==-4) {
-                    //cout << "Trace is AD. false F1. true F2" << endl;
                     array<bool,2> tips = {false,true};
                     executeCase(count,i,j,0,3,A_B_C_D,tips,tempTipsTracesList, tempNonTipsTracesList, tempTraceIDFractures, tempTraceCoordinates);
                     continue;
@@ -294,7 +461,7 @@ namespace DFNLibrary {
             TracesList.TraceCoordinates.push_back(coord);
         }
 
-        computeTracesSquaredLength(TracesList);
+        computeTracesLength(TracesList);
         exportTraces("Traces.txt", TracesList);
         exportFractures("Fractures.txt", FractureList, TracesList);
 
@@ -375,47 +542,33 @@ namespace DFNLibrary {
         } else {
             if(A_equals_C) { // && !B_equals_D
                 if(betas[1] < betas[3]) {
-                    //cout << "Case 6.1 " << endl;
-                    //cout << "Trace is AB.passante F1.no passante F2." << endl;
                     return -1;
                 } else {
-                    //cout << "Case 6.2" << endl;
-                    //cout << "Trace is CD. Non passante for F1. passante for F2." << endl;
                     return -2;
                 }
             } else if(B_equals_D) { // && !A_equals_C
                 if(betas[0] < betas[2]) {
-                    //cout << "Case 7.1" << endl;
-                    //cout << "Trace is CD. Non passante  F1. passante F2" << endl;
                     return -3;
                 } else {
-                    //cout << "Case 7.2" << endl;
-                    //cout << "Trace is AB. passante F1. non passante F2" << endl;
                     return -4;
                 }
             } else { // no corresponding points
                 if(betas[1]< betas[2]) {
-                    //cout << "Case 1. No trace." << endl;
                     return 1;
                 }
                 if(betas[2] < betas[0] && betas[1] < betas[3]) {
-                    //cout << "Case 2. Trace is AB. Passante F1. Non passante F2." << endl;
                     return 2;
                 }
                 if(betas[0] < betas[2] && betas[2] < betas[1] && betas[1] < betas[3]) {
-                    //cout << "Case 3. Trace is CB. Non passante." << endl;
                     return 3;
                 }
                 if(betas[2] < betas[0] && betas[0] < betas[3] && betas[3] < betas[1]) {
-                    //cout << "Case 4. Trace is AD. Non passante." << endl;
                     return 4;
                 }
                 if(betas[3] < betas[0]) {
-                    //cout << "Case 5. No trace." << endl;
                     return 5;
                 }
                 if(betas[0] < betas[2] && betas[3] < betas[1]) {
-                    //cout << "Case 6. Trace is CD. F1 non passante. F2 passante." << endl;
                     return 6;
                 }
 
@@ -483,22 +636,21 @@ namespace DFNLibrary {
 
     }
 //*********************************************************
-    void computeTracesSquaredLength(Traces &TracesList) {
+    void computeTracesLength(Traces &TracesList) {
         const unsigned int num_traces = TracesList.TraceCoordinates.size();
         TracesList.TraceLength.reserve(num_traces);
         for(unsigned int k=0;k<num_traces;k++) {
             const Vector3d P1 = TracesList.TraceCoordinates[k].col(0);
             const Vector3d P2 = TracesList.TraceCoordinates[k].col(1); // points of first trace
-            TracesList.TraceLength.push_back(sqrt(computeSquaredDistancePoints(P1,P2))); // squared length of trace
+            TracesList.TraceLength.push_back(sqrt(computeSquaredDistancePoints(P1,P2))); // length of trace
         }
     }
 //*********************************************************
-    void computePolygonalMesh(Fractures &FractureList, const Traces &TracesList, const double &tol) {
+    void computePolygonalMesh(Fractures &FractureList, const Traces &TracesList, const double &tol1D, const double &tol2D) {
         const unsigned int numFractures = FractureList.FractVertices.size();
 
-         for(unsigned int i=0; i<numFractures; i++) {
+        for(unsigned int i=0; i<numFractures; i++) {
             // initialize polygonal mesh
-            cout << "Frattura " << i << endl;
             MatrixXd vertices = FractureList.FractVertices[i];
             unsigned int num_vertices = vertices.cols();
             unsigned int num_edges = num_vertices;
@@ -533,8 +685,8 @@ namespace DFNLibrary {
             // we will now update it
 
             // calculate the polygonal mesh for i-th fracture
-            vector<unsigned int> passing_traces = FractureList.listTraces[i][false];
-            vector<unsigned int> non_passing_traces = FractureList.listTraces[i][true];
+            const vector<unsigned int> passing_traces = FractureList.listTraces[i][false];
+            const vector<unsigned int> non_passing_traces = FractureList.listTraces[i][true];
 
             const unsigned int num_passing_traces = passing_traces.size();
             const unsigned int num_non_passing_traces = non_passing_traces.size();
@@ -553,7 +705,6 @@ namespace DFNLibrary {
 
                 for(unsigned int j=0; j<num_passing_traces; j++) {
                     // iterate on passing traces
-                    //cout << j << endl;
                     num_polygons = FractureList.FractMesh[i].NumberCell2D;
                     const unsigned int trace_id = passing_traces[j];
                     const MatrixXd trace_end_points = TracesList.TraceCoordinates[trace_id];
@@ -597,8 +748,7 @@ namespace DFNLibrary {
 
                             const Vector3d temp = (P1-P0).cross(Q1-Q0);  // check whether segments are parallel or not
 
-                            /// GESTIRE TOLLERANZA
-                            if(fabs(temp(0)) < tol && fabs(temp(1)) < tol && fabs(temp(2)) < tol) {
+                            if(fabs(temp(0)) < tol1D && fabs(temp(1)) < tol1D && fabs(temp(2)) < tol1D) {
                                 continue; // there is no intersection, segments are parallel
                             }
 
@@ -608,12 +758,11 @@ namespace DFNLibrary {
                             const double alpha = alpha_beta(0);
                             const double beta = alpha_beta(1);
                             const Vector3d P = alpha*(Q0-Q1)+Q1; // Point of intersection between the two lines
-                            /// GESTIRE TOLLERANZE
 
-                            if((alpha < -tol) || (alpha > 1+tol) || (beta < -tol) || (beta >1+tol)) {
+                            if((alpha < -tol1D) || (alpha > 1+tol1D) || (beta < -tol1D) || (beta >1+tol1D)) {
                                 continue;
                             } else {
-                                if(-tol <= beta && beta <= tol) {
+                                if(-tol1D <= beta && beta <= tol1D) {
                                     // beta is basically equal to zero
                                     // if this happens, the intersection coincides with P1
                                     skip = true;
@@ -621,13 +770,13 @@ namespace DFNLibrary {
                                     edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                     tempVec.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                     iter.push_back((k+1)%num_edges);
-                                } else if(tol < beta && beta < 1-tol) {
+                                } else if(tol1D < beta && beta < 1-tol1D) {
                                     // intersection coincides with P
                                     solVec.push_back(P);
                                     edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]);
                                     tempVec.push_back(-1);
                                     iter.push_back(k);
-                                } else if(1-tol <= beta && beta <= 1+ tol) {
+                                } else if(1-tol1D <= beta && beta <= 1+ tol1D) {
                                     // beta is basically equal to 1
                                     // if this happens, the intersection coincides with P0
                                     solVec.push_back(P0);
@@ -651,28 +800,17 @@ namespace DFNLibrary {
                         if(solVec.size()!=2) {
                             continue; // no update
                         }
-                        if((solVec[0]-solVec[1]).norm() < tol) {
+                        if((solVec[0]-solVec[1]).norm() < tol1D) {
                             continue;
                         }
 
-                        cut(FractureList.FractMesh[i], solVec, edges_ids_sol, tempVec, iter,l,tol,false);
+                        cut(FractureList.FractMesh[i], solVec, edges_ids_sol, tempVec, iter,l,tol2D,false);
 
                     } // chiudo ciclo sui poligoni
 
                 } // chiudo ciclo sulle tracce
 
             } // chiudo if sul numero delle tracce passanti
-
-            FractureList.FractMesh[i].Cell0DId.shrink_to_fit();
-            FractureList.FractMesh[i].Cell0DCoordinates.shrink_to_fit();
-
-            FractureList.FractMesh[i].Cell1DId.shrink_to_fit();
-            FractureList.FractMesh[i].Cell1DVertices.shrink_to_fit();
-
-            FractureList.FractMesh[i].Cell2DId.shrink_to_fit();
-            FractureList.FractMesh[i].Cell2DVertices.shrink_to_fit();
-            FractureList.FractMesh[i].Cell2DEdges.shrink_to_fit();
-
 
 
             if(num_non_passing_traces > 0) {
@@ -689,14 +827,12 @@ namespace DFNLibrary {
 
                 for(unsigned int j=0; j<num_non_passing_traces; j++) {
                     // iterate on passing traces
-                    //cout << j << endl;
                     num_polygons = FractureList.FractMesh[i].NumberCell2D;
                     const unsigned int trace_id = non_passing_traces[j];
                     const MatrixXd trace_end_points = TracesList.TraceCoordinates[trace_id];
                     const Vector3d Q0 = trace_end_points.col(0);
                     const Vector3d Q1 = trace_end_points.col(1);
                     for(unsigned int l=0;l<num_polygons;l++) { // iterate on every 2D cell
-                        // check whether Q0 and Q1 belong to the edges of the polygon
                         // check whether Q0 and Q1 belong to the edges of the polygon
                         int id1 = -1;
                         int id2 = -1;
@@ -708,14 +844,14 @@ namespace DFNLibrary {
                             if(id1==-1) {
                                 const double lengthQ0P0 = sqrt(computeSquaredDistancePoints(Q0,P0));
                                 const double lengthQ0P1 = sqrt(computeSquaredDistancePoints(Q0,P1));
-                                if(fabs(edge_length-lengthQ0P0-lengthQ0P1)<=tol) {
+                                if(fabs(edge_length-lengthQ0P0-lengthQ0P1)/max(1.0,max(fabs(edge_length),fabs(lengthQ0P0+lengthQ0P1)))<=tol1D) {
                                     id1 = k;
                                 }
                             }
                             if(id2==-1) {
                                 const double lengthQ1P0 = sqrt(computeSquaredDistancePoints(Q1,P0));
                                 const double lengthQ1P1 = sqrt(computeSquaredDistancePoints(Q1,P1));
-                                if(fabs(edge_length-lengthQ1P0-lengthQ1P1)<=tol) {
+                                if(fabs(edge_length-lengthQ1P0-lengthQ1P1)/max(1.0,max(fabs(edge_length),fabs(lengthQ1P0+lengthQ1P1)))<=tol1D) {
                                     id2 = k;
                                 }
                             }
@@ -729,10 +865,10 @@ namespace DFNLibrary {
                         bool inside_cellQ1 = false;
 
                         if(id1==-1) {
-                            inside_cellQ0 = pointInsidePolygon(tol,Q0,FractureList.FractMesh[i].Cell2DVertices[l],FractureList.FractMesh[i].Cell0DCoordinates,FractureList.FractPlanes[i].Normal);
+                            inside_cellQ0 = pointInsidePolygon(tol1D,Q0,FractureList.FractMesh[i].Cell2DVertices[l],FractureList.FractMesh[i].Cell0DCoordinates,FractureList.FractPlanes[i].Normal);
                         }
                         if(id2==-1) {
-                            inside_cellQ1 = pointInsidePolygon(tol,Q1,FractureList.FractMesh[i].Cell2DVertices[l],FractureList.FractMesh[i].Cell0DCoordinates,FractureList.FractPlanes[i].Normal);
+                            inside_cellQ1 = pointInsidePolygon(tol1D,Q1,FractureList.FractMesh[i].Cell2DVertices[l],FractureList.FractMesh[i].Cell0DCoordinates,FractureList.FractPlanes[i].Normal);
                         }
                         if(id1==-1 && id2==-1) {
                             if(inside_cellQ0 || inside_cellQ1) {
@@ -769,8 +905,7 @@ namespace DFNLibrary {
 
                                     const Vector3d temp = (P1-P0).cross(Q1-Q0);  // check whether segments are parallel or not
 
-                                    /// GESTIRE TOLLERANZA
-                                    if(fabs(temp(0)) < tol && fabs(temp(1)) < tol && fabs(temp(2)) < tol) {
+                                    if(fabs(temp(0)) < tol1D && fabs(temp(1)) < tol1D && fabs(temp(2)) < tol1D) {
                                         continue; // there is no intersection, segments are parallel
                                     }
 
@@ -780,12 +915,11 @@ namespace DFNLibrary {
                                     const double alpha = alpha_beta(0);
                                     const double beta = alpha_beta(1);
                                     const Vector3d P = alpha*(Q0-Q1)+Q1; // Point of intersection between the two lines
-                                    /// GESTIRE TOLLERANZE
 
-                                    if( (beta < -tol) || (beta >1+tol)) {
+                                    if( (beta < -tol1D) || (beta >1+tol1D)) {
                                         continue;
                                     } else {
-                                        if(-tol <= beta && beta <= tol) {
+                                        if(-tol1D <= beta && beta <= tol1D) {
                                             // beta is basically equal to zero
                                             // if this happens, the intersection coincides with P1
                                             skip = true;
@@ -793,13 +927,13 @@ namespace DFNLibrary {
                                             edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             tempVec.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             iter.push_back((k+1)%num_edges);
-                                        } else if(tol < beta && beta < 1-tol) {
+                                        } else if(tol1D < beta && beta < 1-tol1D) {
                                             // intersection coincides with P
                                             solVec.push_back(P);
                                             edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]);
                                             tempVec.push_back(-1);
                                             iter.push_back(k);
-                                        } else if(1-tol <= beta && beta <= 1+ tol) {
+                                        } else if(1-tol1D <= beta && beta <= 1+ tol1D) {
                                             // beta is basically equal to 1
                                             // if this happens, the intersection coincides with P0
                                             solVec.push_back(P0);
@@ -823,11 +957,11 @@ namespace DFNLibrary {
                                 if(solVec.size()!=2) {
                                     continue; // no update
                                 }
-                                if((solVec[0]-solVec[1]).norm() < tol) {
+                                if((solVec[0]-solVec[1]).norm() < tol1D) {
                                     continue;
                                 }
 
-                                cut(FractureList.FractMesh[i],solVec,edges_ids_sol,tempVec,iter,l,tol,true);
+                                cut(FractureList.FractMesh[i],solVec,edges_ids_sol,tempVec,iter,l,tol2D,true);
                                 if(inside_cellQ0 && inside_cellQ1) {
                                     break;
                                 }
@@ -864,8 +998,7 @@ namespace DFNLibrary {
 
                                     const Vector3d temp = (P1-P0).cross(Q1-Q0);  // check whether segments are parallel or not
 
-                                    /// GESTIRE TOLLERANZA
-                                    if(fabs(temp(0)) < tol && fabs(temp(1)) < tol && fabs(temp(2)) < tol) {
+                                    if(fabs(temp(0)) < tol1D && fabs(temp(1)) < tol1D && fabs(temp(2)) < tol1D) {
                                         continue; // there is no intersection, segments are parallel
                                     }
 
@@ -874,13 +1007,12 @@ namespace DFNLibrary {
 
                                     const double alpha = alpha_beta(0);
                                     const double beta = alpha_beta(1);
-                                    const Vector3d P = alpha*(Q0-Q1)+Q1; // Point of intersection between the two lines
-                                    /// GESTIRE TOLLERANZE
+                                    const Vector3d P = alpha*(Q0-Q1)+Q1; // Point of intersection between the two line
 
-                                    if((alpha < -tol) || (alpha > 1+tol) || (beta < -tol) || (beta >1+tol)) {
+                                    if((alpha < -tol1D) || (alpha > 1+tol1D) || (beta < -tol1D) || (beta >1+tol1D)) {
                                         continue;
                                     } else {
-                                        if(-tol <= beta && beta <= tol) {
+                                        if(-tol1D <= beta && beta <= tol1D) {
                                             // beta is basically equal to zero
                                             // if this happens, the intersection coincides with P1
                                             skip = true;
@@ -888,13 +1020,13 @@ namespace DFNLibrary {
                                             edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             tempVec.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             iter.push_back((k+1)%num_edges);
-                                        } else if(tol < beta && beta < 1-tol) {
+                                        } else if(tol1D < beta && beta < 1-tol1D) {
                                             // intersection coincides with P
                                             solVec.push_back(P);
                                             edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]);
                                             tempVec.push_back(-1);
                                             iter.push_back(k);
-                                        } else if(1-tol <= beta && beta <= 1+ tol) {
+                                        } else if(1-tol1D <= beta && beta <= 1+ tol1D) {
                                             // beta is basically equal to 1
                                             // if this happens, the intersection coincides with P0
                                             solVec.push_back(P0);
@@ -918,11 +1050,11 @@ namespace DFNLibrary {
                                 if(solVec.size()!=2) {
                                     continue; // no update
                                 }
-                                if((solVec[0]-solVec[1]).norm() < tol) {
+                                if((solVec[0]-solVec[1]).norm() < tol1D) {
                                     continue;
                                 }
 
-                                cut(FractureList.FractMesh[i],solVec,edges_ids_sol,tempVec,iter,l,tol,true);
+                                cut(FractureList.FractMesh[i],solVec,edges_ids_sol,tempVec,iter,l,tol2D,true);
                             }
 
                         } else if((id1!=-1 && id2==-1) || (id1==-1 && id2!=-1)) {
@@ -959,8 +1091,7 @@ namespace DFNLibrary {
 
                                 const Vector3d temp = (P1-P0).cross(Q1-Q0);  // check whether segments are parallel or not
 
-                                /// GESTIRE TOLLERANZA
-                                if(fabs(temp(0)) < tol && fabs(temp(1)) < tol && fabs(temp(2)) < tol) {
+                                if(fabs(temp(0)) < tol1D && fabs(temp(1)) < tol1D && fabs(temp(2)) < tol1D) {
                                     continue; // there is no intersection, segments are parallel
                                 }
 
@@ -970,13 +1101,12 @@ namespace DFNLibrary {
                                 const double alpha = alpha_beta(0);
                                 const double beta = alpha_beta(1);
                                 const Vector3d P = alpha*(Q0-Q1)+Q1; // Point of intersection between the two lines
-                                /// GESTIRE TOLLERANZE
 
                                 if((id1!=-1 && !inside_cellQ1) || (!inside_cellQ0 && id2!=-1)) {
-                                    if((alpha < -tol) || (alpha > 1+tol) || (beta < -tol) || (beta >1+tol)) {
+                                    if((alpha < -tol1D) || (alpha > 1+tol1D) || (beta < -tol1D) || (beta >1+tol1D)) {
                                         continue;
                                     } else {
-                                        if(-tol <= beta && beta <= tol) {
+                                        if(-tol1D <= beta && beta <= tol1D) {
                                             // beta is basically equal to zero
                                             // if this happens, the intersection coincides with P1
                                             skip = true;
@@ -984,13 +1114,13 @@ namespace DFNLibrary {
                                             edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             tempVec.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             iter.push_back((k+1)%num_edges);
-                                        } else if(tol < beta && beta < 1-tol) {
+                                        } else if(tol1D < beta && beta < 1-tol1D) {
                                             // intersection coincides with P
                                             solVec.push_back(P);
                                             edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]);
                                             tempVec.push_back(-1);
                                             iter.push_back(k);
-                                        } else if(1-tol <= beta && beta <= 1+ tol) {
+                                        } else if(1-tol1D <= beta && beta <= 1+ tol1D) {
                                             // beta is basically equal to 1
                                             // if this happens, the intersection coincides with P0
                                             solVec.push_back(P0);
@@ -1001,10 +1131,10 @@ namespace DFNLibrary {
                                     }
                                 } else if((id1!=-1 && inside_cellQ1) || (inside_cellQ0 && id2!=-1)) {
                                     // alpha can be anything in this case
-                                    if((beta < -tol) || (beta >1+tol)) {
+                                    if((beta < -tol1D) || (beta >1+tol1D)) {
                                         continue;
                                     } else {
-                                        if(-tol <= beta && beta <= tol) {
+                                        if(-tol1D <= beta && beta <= tol1D) {
                                             // beta is basically equal to zero
                                             // if this happens, the intersection coincides with P1
                                             skip = true;
@@ -1012,13 +1142,13 @@ namespace DFNLibrary {
                                             edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             tempVec.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             iter.push_back((k+1)%num_edges);
-                                        } else if(tol < beta && beta < 1-tol) {
+                                        } else if(tol1D < beta && beta < 1-tol1D) {
                                             // intersection coincides with P
                                             solVec.push_back(P);
                                             edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]);
                                             tempVec.push_back(-1);
                                             iter.push_back(k);
-                                        } else if(1-tol <= beta && beta <= 1+ tol) {
+                                        } else if(1-tol1D <= beta && beta <= 1+ tol1D) {
                                             // beta is basically equal to 1
                                             // if this happens, the intersection coincides with P0
                                             solVec.push_back(P0);
@@ -1043,11 +1173,11 @@ namespace DFNLibrary {
                             if(solVec.size()!=2) {
                                 continue; // no update
                             }
-                            if((solVec[0]-solVec[1]).norm() < tol) {
+                            if((solVec[0]-solVec[1]).norm() < tol1D) {
                                 continue;
                             }
 
-                            cut(FractureList.FractMesh[i],solVec,edges_ids_sol,tempVec,iter,l,tol,true);
+                            cut(FractureList.FractMesh[i],solVec,edges_ids_sol,tempVec,iter,l,tol2D,true);
 
                             if((id1!=-1 && inside_cellQ1) || (inside_cellQ0 && id2!=-1)) {
                                 break;
@@ -1088,8 +1218,7 @@ namespace DFNLibrary {
 
                                     const Vector3d temp = (P1-P0).cross(Q1-Q0);  // check whether segments are parallel or not
 
-                                    /// GESTIRE TOLLERANZA
-                                    if(fabs(temp(0)) < tol && fabs(temp(1)) < tol && fabs(temp(2)) < tol) {
+                                    if(fabs(temp(0)) < tol1D && fabs(temp(1)) < tol1D && fabs(temp(2)) < tol1D) {
                                         continue; // there is no intersection, segments are parallel
                                     }
 
@@ -1099,12 +1228,11 @@ namespace DFNLibrary {
                                     const double alpha = alpha_beta(0);
                                     const double beta = alpha_beta(1);
                                     const Vector3d P = alpha*(Q0-Q1)+Q1; // Point of intersection between the two lines
-                                    /// GESTIRE TOLLERANZE
 
-                                    if((alpha < -tol) || (alpha > 1+tol) || (beta < -tol) || (beta >1+tol)) {
+                                    if((alpha < -tol1D) || (alpha > 1+tol1D) || (beta < -tol1D) || (beta >1+tol1D)) {
                                         continue;
                                     } else {
-                                        if(-tol <= beta && beta <= tol) {
+                                        if(-tol1D <= beta && beta <= tol1D) {
                                             // beta is basically equal to zero
                                             // if this happens, the intersection coincides with P1
                                             skip = true;
@@ -1112,13 +1240,13 @@ namespace DFNLibrary {
                                             edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             tempVec.push_back(FractureList.FractMesh[i].Cell2DEdges[l][(k+1)%num_edges]); // because P1 is the starting point of the next edge
                                             iter.push_back((k+1)%num_edges);
-                                        } else if(tol < beta && beta < 1-tol) {
+                                        } else if(tol1D < beta && beta < 1-tol1D) {
                                             // intersection coincides with P
                                             solVec.push_back(P);
                                             edges_ids_sol.push_back(FractureList.FractMesh[i].Cell2DEdges[l][k]);
                                             tempVec.push_back(-1);
                                             iter.push_back(k);
-                                        } else if(1-tol <= beta && beta <= 1+ tol) {
+                                        } else if(1-tol1D <= beta && beta <= 1+ tol1D) {
                                             // beta is basically equal to 1
                                             // if this happens, the intersection coincides with P0
                                             solVec.push_back(P0);
@@ -1142,11 +1270,12 @@ namespace DFNLibrary {
                                 if(solVec.size()!=2) {
                                     continue; // no update
                                 }
-                                if((solVec[0]-solVec[1]).norm() < tol) {
+                                if((solVec[0]-solVec[1]).norm() < tol1D) {
                                     continue;
                                 }
 
-                                cut(FractureList.FractMesh[i],solVec,edges_ids_sol,tempVec,iter,l,tol,true);
+                                cut(FractureList.FractMesh[i],solVec,edges_ids_sol,tempVec,iter,l,tol2D,true);
+                                break;
                             }
 
                         }
@@ -1158,11 +1287,19 @@ namespace DFNLibrary {
                 }
 
             }
-            //FractureList.FractMesh[i] = mesh;
+            FractureList.FractMesh[i].Cell0DId.shrink_to_fit();
+            FractureList.FractMesh[i].Cell0DCoordinates.shrink_to_fit();
+
+            FractureList.FractMesh[i].Cell1DId.shrink_to_fit();
+            FractureList.FractMesh[i].Cell1DVertices.shrink_to_fit();
+
+            FractureList.FractMesh[i].Cell2DId.shrink_to_fit();
+            FractureList.FractMesh[i].Cell2DVertices.shrink_to_fit();
+            FractureList.FractMesh[i].Cell2DEdges.shrink_to_fit();
         }
     }
 //*********************************************************
-    void cut(PolygonalMesh &mesh, vector<Vector3d> &solVec, const vector<unsigned int> &edges_ids_sol, vector<int> &tempVec, vector<unsigned int> &iter, const unsigned int &l, const double &tol, const bool& tips) {
+    void cut(PolygonalMesh &mesh, const vector<Vector3d> &solVec, const vector<unsigned int> &edges_ids_sol, const vector<int> &tempVec, const vector<unsigned int> &iter, const unsigned int &l, const double &tol, const bool& tips) {
 
         if(tempVec[0]==-1 && tempVec[1]==-1) {
             const unsigned int id_edge_first_intersection = edges_ids_sol[0];
