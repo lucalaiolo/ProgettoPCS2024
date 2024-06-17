@@ -412,7 +412,7 @@ namespace DFNLibrary {
                     array<bool,2> tips = {false,false};
                     executeCase(count,i,j,0,1,A_B_C_D,tips, tempTipsTracesList, tempNonTipsTracesList, tempTraceIDFractures, tempTraceCoordinates);
                     continue;
-                } else if(n == 1 || n == 5) {
+                } else if(n == 1 || n == 5 || n==-5 || n==-6) {
                     continue;
                 } else if(n==-1 || n==2) {
                     array<bool,2> tips = {false,true};
@@ -529,11 +529,11 @@ namespace DFNLibrary {
         const bool A_equals_C = (fabs(betas[0]-betas[2])/max(max(fabs(betas[0]),fabs(betas[2])),{1}) < tol);
         bool A_equals_D = (fabs(betas[0]-betas[3])/max(max(fabs(betas[0]),fabs(betas[3])),{1}) < tol);
         if(A_equals_D) {
-            return 1;
+            return -5;
         }
         bool B_equals_C = (fabs(betas[1]-betas[2])/max(max(fabs(betas[1]),fabs(betas[2])),{1}) < tol);
         if(B_equals_C) {
-            return 1;
+            return -6;
         }
         const bool B_equals_D = (fabs(betas[1]-betas[3])/max(max(fabs(betas[1]),fabs(betas[3])),{1}) < tol);
         if(A_equals_C && B_equals_D) {
